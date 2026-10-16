@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       app_url:
-        description: 'Volledige HTTPS-URL naar de gehoste Bij ons-app (eindigend op /)'
+        description: 'HTTPS-URL van Schattepatatjes (eindigend op /)'
+        default: 'https://mrtherich.nl/sp/'
         required: true
         type: string
 
@@ -36,9 +37,9 @@ jobs:
         working-directory: android
         env:
           APP_URL: ${{ inputs.app_url }}
-        run: gradle --no-daemon :app:assembleDebug "-PbijonsUrl=$APP_URL"
+        run: gradle --no-daemon :app:assembleDebug "-PschattepatatjesUrl=$APP_URL"
       - uses: actions/upload-artifact@v4
         with:
-          name: bij-ons-android-debug
+          name: schattepatatjes-android-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

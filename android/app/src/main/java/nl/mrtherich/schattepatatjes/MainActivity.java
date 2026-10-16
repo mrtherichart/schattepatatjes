@@ -1,4 +1,4 @@
-package nl.bijons.app;
+package nl.mrtherich.schattepatatjes;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -27,7 +27,7 @@ public final class MainActivity extends Activity {
         getWindow().setStatusBarColor(0xff5d8483);
         getWindow().setNavigationBarColor(0xffeee1ce);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-        try { siteHost = URI.create(BuildConfig.BIJONS_URL).getHost(); } catch(Exception ex) { siteHost = ""; }
+        try { siteHost = URI.create(BuildConfig.SCHATTEPATATJES_URL).getHost(); } catch(Exception ex) { siteHost = ""; }
 
         FrameLayout root = new FrameLayout(this);
         webView = new WebView(this);
@@ -66,7 +66,7 @@ public final class MainActivity extends Activity {
                 }
             }
         });
-        webView.loadUrl(BuildConfig.BIJONS_URL);
+        webView.loadUrl(BuildConfig.SCHATTEPATATJES_URL);
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data){

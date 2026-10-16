@@ -1,5 +1,5 @@
 <?php
-/** Bij ons API v0.1 — PHP + a locked JSON file. No database required. */
+/** Schattepatatjes API v0.2 — PHP + a locked JSON file. No database required. */
 declare(strict_types=1);
 
 require __DIR__ . '/config.php';
@@ -232,7 +232,7 @@ if($action==='product-search'){
     // Legacy Open Food Facts text search; small, cached, optional enhancement.
     $url='https://world.openfoodfacts.org/cgi/search.pl?'.http_build_query(['search_terms'=>$q,'search_simple'=>'1','action'=>'process','json'=>'1','page_size'=>6,'fields'=>'product_name,brands,image_front_url,image_front_small_url,code']);
     $host=preg_replace('/[^a-zA-Z0-9.-]/','',$_SERVER['HTTP_HOST']??'localhost');
-    $ua='BijOns/0.1 (https://'.$host.'; private family shopping list)';
+    $ua='Schattepatatjes/0.2 (https://'.$host.'; private family shopping list)';
     $raw=false;
     if(function_exists('curl_init')){
         $ch=curl_init($url);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>4,CURLOPT_TIMEOUT=>8,CURLOPT_USERAGENT=>$ua,CURLOPT_FOLLOWLOCATION=>false]);$raw=curl_exec($ch);curl_close($ch);

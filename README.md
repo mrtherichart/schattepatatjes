@@ -1,4 +1,4 @@
-# Bij ons — versie 0.1
+# Schattepatatjes — versie 0.2
 
 Een gezellige, eigenzinnige gezinsapp in een verzorgde Web 2.0-stijl: een beetje 2007, zonder kinderachtige aankleding. **Eén gewone HTML/CSS/JavaScript-interface**, met een kleine PHP/JSON-server. Android gebruikt later een native WebView-omhulsel; op iPhone installeer je dezelfde website als webapp op het beginscherm.
 
@@ -26,7 +26,7 @@ Open vervolgens `http://127.0.0.1:8787/` op hetzelfde apparaat. Zonder installat
 ## Op je shared hosting zetten
 
 1. Controleer dat de hosting **PHP 8.1 of hoger**, HTTPS en schrijfrechten voor een map *buiten de publieke document-root* ondersteunt. Geen database of PHP-framework nodig.
-2. Maak op de hosting eerst een eigen `config.php` door `config.example.php` te kopiëren en daarin een lange willekeurige installatiesleutel te zetten. Upload daarna `index.html`, `styles.css`, `app.js`, `api.php`, je privé-`config.php`, `manifest.webmanifest`, `sw.js`, `.htaccess` en de hele map `assets/` naar bijvoorbeeld `https://jouwdomein.nl/bij-ons/`. Upload geen voorbeeldscreenshots, Android-bronnen of losse installatiesleutel als publiek bestand.
+2. Maak op de hosting eerst een eigen `config.php` door `config.example.php` te kopiëren en daarin een lange willekeurige installatiesleutel te zetten. Upload daarna `index.html`, `styles.css`, `app.js`, `api.php`, je privé-`config.php`, `manifest.webmanifest`, `sw.js`, `.htaccess` en de hele map `assets/` naar bijvoorbeeld `https://mrtherich.nl/sp/`. Upload geen voorbeeldscreenshots, Android-bronnen of losse installatiesleutel als publiek bestand.
 3. Open de website, klik rechtsboven op het tandwiel en vul onder *Samen synchroniseren* de gegevens in. De eenmalige installatiesleutel staat in `config.php`, achter `BIJONS_SETUP_KEY`. De demo-inhoud wordt vervangen door een lege gezamenlijke ruimte.
 4. Kies een **sterk gezamenlijk wachtwoord** (minimaal 10 tekens), dat je vrouw ook kan gebruiken om in te loggen. Open dezelfde URL op haar iPhone en log in via de instellingen. Tik rechtsboven op haar avatar om vanaf haar toestel de juiste persoon als actieve gebruiker te kiezen.
 5. Gebruik bij voorkeur een eigen submap of subdomein. De JSON-data en automatische dagback-ups worden door PHP buiten de publiek zichtbare document-root geplaatst (`bijons-private-...`). Mocht je hosting dat verbieden, dan geeft de API bewust een foutmelding. Zet de data **niet zomaar publiek in de webmap**.
@@ -45,7 +45,7 @@ De map `android/` bevat de **broncode** van de native Android WebView-omhulling.
 
 ```bash
 cd android
-gradle :app:assembleDebug -PbijonsUrl=https://jouwdomein.nl/bij-ons/
+gradle :app:assembleDebug -PschattepatatjesUrl=https://mrtherich.nl/sp/
 ```
 
 Voor een APK kun je op GitHub bij **Actions → Android APK bouwen → Run workflow** de volledige HTTPS-hosting-URL invoeren. De APK verschijnt als downloadbaar build-artifact. Dit is een debug-APK, nog geen officiële Play Store-release. **Gebruik de voorbeeld-URL in `android/app/build.gradle` niet voor de echte APK.** De app heeft internet nodig om de server te bereiken, maar de webinterface kan dankzij caching ook tijdelijk offline openen.
@@ -70,3 +70,16 @@ Voor een APK kun je op GitHub bij **Actions → Android APK bouwen → Run workf
 - Android: eenvoudige Java WebView-wrapper; de appcode staat centraal op je eigen hosting.
 
 Dit is een **eerste werkende versie** om de sfeer, navigatie en lijstinteractie daadwerkelijk op een telefoon te beoordelen. Pas daarna de details verder aan.
+
+## Vaste locatie en naam
+
+- Appnaam op Android, iPhone en in de browser: **Schattepatatjes**.
+- Hostinglocatie: **https://mrtherich.nl/sp/**. Alle webverzoeken en PWA-bestanden gebruiken relatieve paden binnen `/sp/`.
+- De Android-build gebruikt deze URL standaard; via de workflow-input kun je hem later wijzigen.
+- De interne naam `bijons` in bestaande lokale opslagsleutels, sessiecookies en `BIJONS_SETUP_KEY` blijft voorlopig behouden voor compatibiliteit.
+
+### De URL geeft 403 Forbidden
+
+Zolang `/sp/` een 403 geeft, is Schattepatatjes nog niet live. Upload eerst de **publieke webbestanden** naar de webmap die bij `/sp/` hoort, inclusief `index.html`, `api.php`, `.htaccess`, `styles.css`, `app.js`, `manifest.webmanifest`, `sw.js` en `assets/`. Upload je echte `config.php` uitsluitend rechtstreeks naar die hosting; plaats dat bestand en de installatiesleutel nooit in de publieke GitHub-repository.
+
+Als er daarna nog 403 staat, controleer dan bij de hosting of `/sp/` naar de juiste map verwijst, of `index.html` bereikbaar is, de map- en bestandsrechten kloppen en of `.htaccess` of een beveiligingsregel de toegang blokkeert. De Android-APK kan al worden gebouwd, maar toont pas een werkende app zodra de server bereikbaar is.
