@@ -304,7 +304,8 @@ function renderOverlay(){
   <h3 class="form-heading" style="margin-top:24px">Samen synchroniseren</h3><div class="setup-card"><div class="status-row">${ico(mode==='online'?'cloud':'lock','sm')} ${mode==='online'?'Verbonden met de gezinsserver':mode==='locked'?'Gezinsserver gevonden — aanmelden':mode==='setup'?'Server is klaar voor de eerste installatie':'Lokaal op dit toestel'}</div>
   <p>${mode==='online'?'Alle gezinsleden gebruiken dezelfde boodschappen, taken en profielen. Bij tijdelijk geen bereik worden wijzigingen later verstuurd.':mode==='locked'?'Log opnieuw in met jullie gezamenlijke gezinswachtwoord.':mode==='setup'?'Deze website heeft een PHP-backend. Maak één keer een gezinsruimte aan om jullie telefoons te koppelen. De voorbeeldgegevens worden daarbij vervangen.':'Je kunt de app nu al proberen. Als je hem op je PHP-hosting plaatst, kun je één gedeelde gezinsruimte instellen.'}</p>
   ${mode==='setup'?`<form id="setup-form"><div class="field"><label>Naam van jullie plekje</label><input name="household" value="Ons gezin" maxlength="55" required></div><div class="field-row"><div class="field"><label>Jouw naam</label><input name="owner" maxlength="35" required placeholder="Jij"></div><div class="field"><label>Naam van je partner</label><input name="partner" maxlength="35" required placeholder="Partner"></div></div><div class="field"><label>Installatiesleutel (staat in config.php)</label><input type="text" name="setupKey" required autocomplete="off" placeholder="Eenmalige installatiesleutel"></div><div class="field"><label>Gezamenlijk wachtwoord (minimaal 10 tekens)</label><input type="password" name="password" minlength="10" required autocomplete="new-password"></div><button type="submit" class="gloss-btn full">Maak ons gezin aan</button></form>`:mode==='locked'?`<form id="login-form"><div class="field"><label>Gezinswachtwoord</label><input type="password" name="password" required autocomplete="current-password"></div><button class="gloss-btn full" type="submit">Aanmelden</button></form>`:mode==='online'?`<button class="gloss-btn secondary small" data-action="logout">Afmelden van dit toestel</button>`:`<button class="gloss-btn secondary small" data-action="retry-server">${ico('cloud','sm')} Zoek gezinsserver</button>`}</div>
-  <h3 class="form-heading" style="margin-top:23px">Even weten</h3><p class="fineprint">Dit is versie 0.1. Foto's blijven klein; er is geen reclame en geen externe analyse. Gegevens staan lokaal op je telefoon en, zodra verbonden, als JSON op je eigen server. Gebruik HTTPS bij publicatie. Maak ook regelmatig een back-up.</p>`;
+  ${updatePanel()}
+  <h3 class="form-heading" style="margin-top:23px">Even weten</h3><p class="fineprint">Dit is versie 0.4. Foto's blijven klein; er is geen reclame en geen externe analyse. Gegevens staan lokaal op je telefoon en, zodra verbonden, als JSON op je eigen server. Gebruik HTTPS bij publicatie. Maak ook regelmatig een back-up.</p>`;
  }
  $('#overlay-root').innerHTML=`<div class="modal-shade" data-action="shade-close"><section class="modal-window" role="dialog" aria-modal="true" aria-label="${attr(title)}"><div class="modal-titlebar"><h2>${esc(title)}</h2><button class="icon-button close-modal" aria-label="Sluiten" data-action="close-modal">${ico('close')}</button></div><div class="modal-inner">${content}</div></section></div>`;
  const autofocus=modal.kind==='task'||modal.kind==='grocery';
@@ -334,6 +335,35 @@ function prepareGroceryFromCatalog(p){
  if(dupe){toast('Staat al op het briefje.');return;}
  operation('addGrocery',{id:mkid(),name:p.name,quantity:p.quantity,storeId:p.storeId,image:p.image});toast('Weer op het briefje gezet.');
 }
+// Android updateverzoeken lopen alleen via de kleine native bridge.
+const androidUpdateAvailable = Boolean(window.SchattepatatjesUpdater);
+let updaterInfo = {status:'idle', version:'0.4'};
+function updatePanel(){
+  if(!androidUpdateAvailable) return '';
+  const u=updaterInfo;
+  const messages={idle:'Controleer wanneer je wilt of er een nieuwe Android-versie klaarstaat.',checking:'Even kijken of er iets nieuws is…',current:'Je hebt de nieuwste versie.',downloading:`Nieuwe versie ophalen… ${u.progress||0}%`,installing:'Android opent de installatie. Bevestig de update op je telefoon.',permission:'Sta Schattepatatjes toe om een update te installeren; kom daarna terug naar de app.',error:u.message||'Controleren lukte niet. Probeer het later opnieuw.'};
+  const text=u.status==='available'?`Versie ${esc(u.version)} is beschikbaar. ${esc(u.notes||'')}`:messages[u.status]||messages.idle;
+  return `<h3 class="form-heading" style="margin-top:24px">App bijwerken</h3><div class="setup-card" id="updater-card">
+    <div class="status-row">${ico('info','sm')} Schattepatatjes voor Android · versie 0.4</div>
+    <p id="updater-message" aria-live="polite">${text}</p>
+    ${u.status==='available'?`<button class="gloss-btn" data-action="install-app-update">Download en installeer ${esc(u.version)}</button>`:''}
+    ${u.status==='downloading'?`<progress style="width:100%" max="100" value="${Number(u.progress)||0}"></progress>`:''}
+    <button class="gloss-btn secondary small" data-action="check-app-update" ${u.status==='checking'||u.status==='downloading'?'disabled':''}>${ico('cloud','sm')} Controleren op updates</button>
+    <p class="fineprint" style="margin-top:11px">Je gegevens blijven staan. Android vraagt altijd zelf om toestemming voor de installatie.</p>
+  </div>`;
+}
+window.schattepatatjesUpdateEvent=function(raw){
+  try{
+    const next=JSON.parse(raw);
+    const previous=updaterInfo.status;
+    updaterInfo=next;
+    const card=document.querySelector('#updater-card');
+    if(card){const tmp=document.createElement('div');tmp.innerHTML=updatePanel();card.replaceWith(tmp.querySelector('#updater-card'));}
+    if(next.status==='available' && previous!=='available' && !card) toast(`Schattepatatjes ${next.version} is beschikbaar bij instellingen.`);
+    if(next.status==='error' && previous==='downloading') toast(next.message||'Bijwerken is niet gelukt.');
+  }catch(e){console.warn('Updatebericht kon niet worden gelezen',e);}
+};
+
 async function handleClick(e){
  const button=e.target.closest('[data-action]');if(!button)return;
  const a=button.dataset.action,id=button.dataset.id;
@@ -343,6 +373,8 @@ async function handleClick(e){
  if(a==='become'){activeId=id;storage.setItem('bijons-active-person',activeId);ui.taskFilter='all';render();toast(`Je kijkt nu als ${person(id)?.name}.`);return;}
  if(a==='view-person'){ui.page='people';ui.viewPerson=id;render();window.scrollTo(0,0);return;}
  if(a==='settings'){openModal('settings');return;}
+ if(a==='check-app-update'){window.SchattepatatjesUpdater?.checkUpdates();return;}
+ if(a==='install-app-update'){window.SchattepatatjesUpdater?.installUpdate();return;}
  if(a==='filter-store'){ui.store=id;render();return;}
  if(a==='filter-task'){ui.taskFilter=id;render();return;}
  if(a==='new-grocery'){openModal('grocery');return;}
@@ -468,3 +500,5 @@ window.setInterval(refreshRemote,12000);
 if(!window.SCHATTEPATATJES_NATIVE && 'serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
 render();
 loadRemote();
+
+if(androidUpdateAvailable){try{const last=Number(localStorage.getItem('sp-last-update-check')||0);if(Date.now()-last>12*60*60*1000){localStorage.setItem('sp-last-update-check',String(Date.now()));setTimeout(()=>window.SchattepatatjesUpdater.checkUpdates(),1200);}}catch(e){}}

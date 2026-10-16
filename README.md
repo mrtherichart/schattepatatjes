@@ -91,3 +91,11 @@ De Android-APK bevat `index.html`, `app.js`, `styles.css`, het manifest en de af
 Elke update vereist dezelfde Android-ondertekeningssleutel (`schattepatatjes-release.jks`), dezelfde package-ID (`nl.mrtherich.schattepatatjes`) en een hoger `versionCode`. De `.jks` en het wachtwoord mogen **nooit** in GitHub of de APK worden opgenomen. Bewaar een privéback-up van beide.
 
 Voor automatische release-builds kun je in de **GitHub-repository secrets** `SCHATTEPATATJES_KEYSTORE_B64` (de base64 van de JKS) en `SCHATTEPATATJES_SIGNING_PASSWORD` instellen. Zonder deze secrets maakt de workflow een unsigned release-APK die apart met dezelfde sleutel ondertekend kan worden.
+
+## Updates rechtstreeks vanuit de Android-app (v0.4)
+
+De Android WebView-app heeft onder **Instellingen → App bijwerken** een knop om updates te zoeken. Elke 12 uur bij gebruik controleert hij ook stil op updates. Bij een nieuw versienummer toont de app de wijzigingsinformatie en een knop voor download/installatie. Android vraagt zelf de laatste toestemming. De app controleert eerst SHA-256, pakketnaam, versienummer en de Android-ondertekeningssleutel. De privé-keystore hoort nooit in de app of repository.
+
+Publiceer op de gezinswebsite in `/sp/updates/` een `latest.json` met `versionCode`, `versionName`, `apk`, `sha256` en `notes`, plus de bijbehorende APK met bestandsnaam `schattepatatjes-v<versionCode>.apk`. De updatebestanden hoeven geen login, zodat de update ook tijdens problemen met de gezins-API gevonden kan worden. Voorbeeldbestand volgt bij het ondertekende APK-pakket.
+
+**Belangrijk:** de website moet bereikbaar zijn, en de update-APK moet daadwerkelijk daar geüpload zijn; de app publiceert niet zelf een update. Volgende APK's moeten dezelfde signing key gebruiken en een hoger versionCode krijgen. Tijdens een update blijven de appgegevens bewaard.

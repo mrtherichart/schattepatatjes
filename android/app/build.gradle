@@ -8,8 +8,8 @@ android {
         applicationId 'nl.mrtherich.schattepatatjes'
         minSdk 24
         targetSdk 35
-        versionCode 3
-        versionName '0.3'
+        versionCode 4
+        versionName '0.4'
     }
     buildFeatures { buildConfig true }
     compileOptions {
@@ -52,3 +52,5 @@ tasks.register('bundleWeb', Copy) {
 }
 android.sourceSets.main.assets.srcDir(layout.buildDirectory.dir('generated/webAssets'))
 tasks.named('preBuild') { dependsOn 'bundleWeb' }
+
+dependencies { implementation 'androidx.core:core:1.13.1' }

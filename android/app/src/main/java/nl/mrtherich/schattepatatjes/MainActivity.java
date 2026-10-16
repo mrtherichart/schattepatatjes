@@ -31,6 +31,7 @@ public final class MainActivity extends Activity {
             "assets/apple-touch-icon.png"));
     private static final int PICK_FILE = 42;
     private WebView webView;
+    private UpdateManager updates;
     private ValueCallback<Uri[]> fileCallback;
 
     private WebResourceResponse localPage(Uri url) {
@@ -74,6 +75,8 @@ public final class MainActivity extends Activity {
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
+        updates = new UpdateManager(this, webView);
+        webView.addJavascriptInterface(updates, "SchattepatatjesUpdater");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
         webView.setWebViewClient(new WebViewClient() {
@@ -115,6 +118,10 @@ public final class MainActivity extends Activity {
     @Override public void onBackPressed() {
         if (webView != null && webView.canGoBack()) webView.goBack();
         else super.onBackPressed();
+    }
+    @Override protected void onResume() {
+        super.onResume();
+        if (updates != null) updates.resumePendingInstall();
     }
     @Override protected void onDestroy() {
         if (fileCallback != null) fileCallback.onReceiveValue(null);
