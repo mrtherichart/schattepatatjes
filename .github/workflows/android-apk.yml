@@ -25,10 +25,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Controleer Android SDK
+        run: |
+          test -d "$ANDROID_HOME"
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar" || sdkmanager --install 'platforms;android-35'
+          test -d "$ANDROID_HOME/build-tools/35.0.0" || sdkmanager --install 'build-tools;35.0.0'
       - name: Gebruik privésleutel indien ingesteld
         env:
           KEYSTORE_B64: ${{ secrets.SCHATTEPATATJES_KEYSTORE_B64 }}
