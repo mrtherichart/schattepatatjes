@@ -465,6 +465,6 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal)closeModal();})
 window.addEventListener('online',()=>{if(mode==='online')flushQueue();refreshRemote();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){flushQueue();refreshRemote();}});
 window.setInterval(refreshRemote,12000);
-if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if(!window.SCHATTEPATATJES_NATIVE && 'serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
 render();
 loadRemote();

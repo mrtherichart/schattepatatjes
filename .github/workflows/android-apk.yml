@@ -1,13 +1,17 @@
 name: Android APK bouwen
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'index.html'
+      - 'app.js'
+      - 'styles.css'
+      - 'manifest.webmanifest'
+      - 'assets/**'
+      - '.github/workflows/android-apk.yml'
   workflow_dispatch:
-    inputs:
-      app_url:
-        description: 'HTTPS-URL van Schattepatatjes (eindigend op /)'
-        default: 'https://mrtherich.nl/sp/'
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -25,21 +29,29 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Controleer de URL
+      - name: Gebruik privésleutel indien ingesteld
         env:
-          APP_URL: ${{ inputs.app_url }}
+          KEYSTORE_B64: ${{ secrets.SCHATTEPATATJES_KEYSTORE_B64 }}
+          SIGNING_PASSWORD: ${{ secrets.SCHATTEPATATJES_SIGNING_PASSWORD }}
         run: |
-          case "$APP_URL" in
-            https://*/*) ;;
-            *) echo 'Alleen volledige HTTPS-URLs zijn toegestaan.' >&2; exit 1 ;;
-          esac
-      - name: Bouw debug-APK
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$SIGNING_PASSWORD" ]; then
+            mkdir -p "$RUNNER_TEMP/schattepatatjes"
+            printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/schattepatatjes/release.jks"
+            chmod 600 "$RUNNER_TEMP/schattepatatjes/release.jks"
+            echo "SCHATTEPATATJES_KEYSTORE_PATH=$RUNNER_TEMP/schattepatatjes/release.jks" >> "$GITHUB_ENV"
+            echo "SCHATTEPATATJES_SIGNING_PASSWORD=$SIGNING_PASSWORD" >> "$GITHUB_ENV"
+          fi
+      - name: Bouw release-APK inclusief offline webinterface
         working-directory: android
-        env:
-          APP_URL: ${{ inputs.app_url }}
-        run: gradle --no-daemon :app:assembleDebug "-PschattepatatjesUrl=$APP_URL"
-      - uses: actions/upload-artifact@v4
+        run: gradle --no-daemon :app:assembleRelease
+      - name: Bewaar signing-tool voor lokale ondertekening
+        run: |
+          tool=$(find "$ANDROID_HOME/build-tools" -path '*/lib/apksigner.jar' | sort -V | tail -1)
+          test -s "$tool"
+          cp "$tool" android/app/build/outputs/apk/release/apksigner.jar
+      - name: Maak Android-build beschikbaar
+        uses: actions/upload-artifact@v4
         with:
-          name: schattepatatjes-android-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: schattepatatjes-android-build
+          path: android/app/build/outputs/apk/release/
           if-no-files-found: error

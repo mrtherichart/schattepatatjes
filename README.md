@@ -83,3 +83,11 @@ Dit is een **eerste werkende versie** om de sfeer, navigatie en lijstinteractie 
 Zolang `/sp/` een 403 geeft, is Schattepatatjes nog niet live. Upload eerst de **publieke webbestanden** naar de webmap die bij `/sp/` hoort, inclusief `index.html`, `api.php`, `.htaccess`, `styles.css`, `app.js`, `manifest.webmanifest`, `sw.js` en `assets/`. Upload je echte `config.php` uitsluitend rechtstreeks naar die hosting; plaats dat bestand en de installatiesleutel nooit in de publieke GitHub-repository.
 
 Als er daarna nog 403 staat, controleer dan bij de hosting of `/sp/` naar de juiste map verwijst, of `index.html` bereikbaar is, de map- en bestandsrechten kloppen en of `.htaccess` of een beveiligingsregel de toegang blokkeert. De Android-APK kan al worden gebouwd, maar toont pas een werkende app zodra de server bereikbaar is.
+
+## Android APK en eigen updatesleutel (v0.3)
+
+De Android-APK bevat `index.html`, `app.js`, `styles.css`, het manifest en de afbeeldingen zelf. De WebView laadt ze via onderschepte aanvragen voor `https://mrtherich.nl/sp/`. Alleen requests naar `api.php` lopen naar de server. De server mag offline zijn: de interface en lokale data blijven bruikbaar.
+
+Elke update vereist dezelfde Android-ondertekeningssleutel (`schattepatatjes-release.jks`), dezelfde package-ID (`nl.mrtherich.schattepatatjes`) en een hoger `versionCode`. De `.jks` en het wachtwoord mogen **nooit** in GitHub of de APK worden opgenomen. Bewaar een privéback-up van beide.
+
+Voor automatische release-builds kun je in de **GitHub-repository secrets** `SCHATTEPATATJES_KEYSTORE_B64` (de base64 van de JKS) en `SCHATTEPATATJES_SIGNING_PASSWORD` instellen. Zonder deze secrets maakt de workflow een unsigned release-APK die apart met dezelfde sleutel ondertekend kan worden.
