@@ -1,0 +1,44 @@
+name: Android APK bouwen
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: 'Volledige HTTPS-URL naar de gehoste Bij ons-app (eindigend op /)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Controleer de URL
+        env:
+          APP_URL: ${{ inputs.app_url }}
+        run: |
+          case "$APP_URL" in
+            https://*/*) ;;
+            *) echo 'Alleen volledige HTTPS-URLs zijn toegestaan.' >&2; exit 1 ;;
+          esac
+      - name: Bouw debug-APK
+        working-directory: android
+        env:
+          APP_URL: ${{ inputs.app_url }}
+        run: gradle --no-daemon :app:assembleDebug "-PbijonsUrl=$APP_URL"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bij-ons-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

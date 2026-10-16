@@ -1,0 +1,19 @@
+# Echte serverconfiguratie en gegevens horen nooit in de openbare repository.
+/config.php
+/data/*
+!/data/.htaccess
+*.log
+*.tmp
+*.bak
+*private*
+
+# Lokale IDE-, build- en testbestanden
+.DS_Store
+.idea/
+.gradle/
+**/build/
+/local.properties
+/android/local.properties
+
+# Ontwerpvoorbeelden staan alleen in de VM/Downloads
+/preview-*.png

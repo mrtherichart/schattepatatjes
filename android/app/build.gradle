@@ -1,0 +1,19 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'nl.bijons.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'nl.bijons.app'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '0.1'
+        // Set -PbijonsUrl=https://your-domain.example/bij-ons/ during the build.
+        def url = project.findProperty('bijonsUrl') ?: 'https://example.org/bij-ons/'
+        buildConfigField 'String', 'BIJONS_URL', '"' + url.toString().replace('"','') + '"'
+    }
+    buildFeatures { buildConfig true }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
