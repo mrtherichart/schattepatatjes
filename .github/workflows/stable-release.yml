@@ -1,0 +1,103 @@
+name: Signed Android release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      SCHATTEPATATJES_KEYSTORE_B64: ${{ secrets.SCHATTEPATATJES_KEYSTORE_B64 }}
+      SCHATTEPATATJES_SIGNING_PASSWORD: ${{ secrets.SCHATTEPATATJES_SIGNING_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check signing credentials
+        id: signing
+        shell: bash
+        run: |
+          if [[ -n "$SCHATTEPATATJES_KEYSTORE_B64" && -n "$SCHATTEPATATJES_SIGNING_PASSWORD" ]]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::Configure both Schattepatatjes signing secrets. No unsigned release will be published.'
+          fi
+      - name: Determine version and existing release
+        if: steps.signing.outputs.ready == 'true'
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER=$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"/\1/p' app/build.gradle.kts | head -1)
+          [[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid versionName'; exit 1; }
+          echo "tag=v$VER" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VER" >/dev/null 2>&1; then
+            echo 'new=false' >> "$GITHUB_OUTPUT"
+            echo "::notice::Release v$VER already exists: bump versionCode and versionName."
+          else
+            echo 'new=true' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-java@v4
+        if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
+        with:
+          gradle-version: '9.1.0'
+      - name: Install Android SDK
+        if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
+        run: |
+          test -d "$ANDROID_HOME"
+          test -f "$ANDROID_HOME/platforms/android-36/android.jar" || sdkmanager --install 'platforms;android-36'
+          test -d "$ANDROID_HOME/build-tools/36.0.0" || sdkmanager --install 'build-tools;36.0.0'
+      - name: Verify app
+        if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
+        run: |
+          node --check app.js
+          node tests/check-project.cjs
+          php -l api.php
+      - name: Restore the permanent key on the GitHub runner
+        if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/schattepatatjes"
+          printf '%s' "$SCHATTEPATATJES_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/schattepatatjes/release.jks"
+          echo "SCHATTEPATATJES_KEYSTORE_PATH=$RUNNER_TEMP/schattepatatjes/release.jks" >> "$GITHUB_ENV"
+      - name: Build signed Kotlin release APK
+        if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
+        run: gradle --no-daemon :app:assembleRelease
+      - name: Validate package, signature and offline assets
+        if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-release.apk
+          TOOLS="$ANDROID_HOME/build-tools/36.0.0"
+          "$TOOLS/zipalign" -c -v 4 "$APK"
+          "$TOOLS/apksigner" verify --verbose --print-certs --min-sdk-version 24 "$APK" | tee "$RUNNER_TEMP/signature.txt"
+          grep -iq 'Signer #1 certificate SHA-256 digest: ca6ff34569063ff00cb086d18ca95e24a1bb9d479c9df07f1892ac6d9e73ea77' "$RUNNER_TEMP/signature.txt"
+          "$TOOLS/aapt" dump badging "$APK" | grep -F "package: name='nl.mrtherich.schattepatatjes'"
+          for f in assets/index.html assets/app.js assets/styles.css assets/icon.svg; do unzip -l "$APK" | grep -F "$f"; done
+          cp "$APK" "$RUNNER_TEMP/Schattepatatjes.apk"
+      - name: Publish signed APK as GitHub Release
+        if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release create "$TAG" "$RUNNER_TEMP/Schattepatatjes.apk" \
+            --target "$GITHUB_SHA" --title "Schattepatatjes $TAG" \
+            --notes 'Schattepatatjes Android. Kotlin + offline webinterface. Open Instellingen > App bijwerken for subsequent updates.' \
+            --latest
+      - name: Remove private key material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/schattepatatjes/release.jks"

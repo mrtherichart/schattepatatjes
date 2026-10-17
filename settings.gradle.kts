@@ -1,4 +1,4 @@
 pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
 dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
-rootProject.name = 'Schattepatatjes'
-include ':app'
+rootProject.name = "Schattepatatjes"
+include(":app")

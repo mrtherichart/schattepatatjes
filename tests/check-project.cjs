@@ -1,0 +1,24 @@
+'use strict';
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const read=p=>fs.readFileSync(p,'utf8');
+const main=read('app/src/main/java/nl/mrtherich/schattepatatjes/MainActivity.kt');
+const updater=read('app/src/main/java/nl/mrtherich/schattepatatjes/SchattepatatjesUpdater.kt');
+const front=read('app.js');
+const gradle=read('app/build.gradle.kts');
+const manifest=read('app/src/main/AndroidManifest.xml');
+assert(main.includes('WebViewAssetLoader'));
+assert(main.includes('setDomain("mrtherich.nl")'));
+assert(main.includes('uri.path == "${PREFIX}api.php"')); // API uses native HTTPS with cookies.
+assert(main.includes('SchattepatatjesUpdater'));
+assert(updater.includes('releases/latest'));
+assert(updater.includes('PINNED_CERT'));
+assert(updater.includes('getPackageArchiveInfo'));
+assert(updater.includes('getString("browser_download_url")'));
+assert(front.includes('fetch(`api.php?${params}`'));
+assert(front.includes('window.SCHATTEPATATJES_NATIVE'));
+assert(front.includes('window.SchattepatatjesUpdater'));
+assert(gradle.includes('versionCode = 5'));
+assert(manifest.includes('FileProvider'));
+assert(fs.existsSync('config.example.php'));
+console.log('Schattepatatjes: project- en updatecontroles geslaagd.');
