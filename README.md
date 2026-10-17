@@ -6,7 +6,7 @@ Een persoonlijke gezinsapp voor boodschappen, gedeelde taken, profielen en krabb
 
 Download uitsluitend de **ondertekende APK** van [GitHub Releases](https://github.com/mrtherichart/schattepatatjes/releases/latest). In de Android-app: **Instellingen → App bijwerken** om nieuwe releases op te halen. Android vraagt altijd zelf toestemming voor installatie.
 
-Er is nog geen release beschikbaar tot de twee repository secrets zijn ingesteld en **Signed Android release** is uitgevoerd. Een debug-build uit Actions is niet geschikt om over een ondertekende versie te installeren. Versie 0.5.0 kan wel als update over de bestaande, met dezelfde sleutel ondertekende v0.3 en v0.4 worden geïnstalleerd.
+Er is nog geen release beschikbaar tot de twee repository secrets zijn ingesteld en **Signed Android release** is uitgevoerd. Een debug-build uit Actions is niet geschikt om over een ondertekende versie te installeren. Versie 0.5.1 kan wel als update over de bestaande, met dezelfde sleutel ondertekende v0.3 en v0.4 worden geïnstalleerd.
 
 ## Structuur
 
@@ -32,7 +32,7 @@ De twee bestaande GitHub-repository secrets blijven exact hetzelfde:
 - `SCHATTEPATATJES_KEYSTORE_B64`: base64 van je **bestaande** `.jks`.
 - `SCHATTEPATATJES_SIGNING_PASSWORD`: het bijbehorende wachtwoord.
 
-De keystore blijft privé en wordt op de GitHub-runner tijdelijk gedecodeerd. De release-workflow stopt vóór ondertekenen en publiceren als een van beide secrets ontbreekt. Hij verifieert de vaste SHA-256-certificaatfingerprint, app-ID en de aanwezigheid van de HTML-assets in de APK. Daarna maakt hij `v0.5.0` met `Schattepatatjes.apk`. Voor een volgende release: verhoog `versionCode` en `versionName` in `app/build.gradle.kts` (en de getoonde appversie).
+De keystore blijft privé en wordt op de GitHub-runner tijdelijk gedecodeerd. De release-workflow stopt vóór ondertekenen en publiceren als een van beide secrets ontbreekt. Hij verifieert de vaste SHA-256-certificaatfingerprint, app-ID en de aanwezigheid van de HTML-assets in de APK. Daarna maakt hij `v0.5.1` met `Schattepatatjes.apk`. Voor een volgende release: verhoog `versionCode` en `versionName` in `app/build.gradle.kts` (en de getoonde appversie).
 
 De updater gebruikt alleen GitHub Releases, controleert SHA-256, de pakket-ID en de **zelfde certificaatfingerprint**, en opent vervolgens de Android-pakketinstaller. Hij kan de update niet stilletjes installeren. Vanaf de eerdere v0.4 moet je één keer de nieuwe APK handmatig installeren, omdat v0.4 nog een andere updatebron gebruikte.
 

@@ -18,7 +18,7 @@ assert(updater.includes('getString("browser_download_url")'));
 assert(front.includes('fetch(`api.php?${params}`'));
 assert(front.includes('window.SCHATTEPATATJES_NATIVE'));
 assert(front.includes('window.SchattepatatjesUpdater'));
-assert(gradle.includes('versionCode = 5'));
+assert(gradle.includes('versionCode = 6'));
 assert(manifest.includes('FileProvider'));
 assert(fs.existsSync('config.example.php'));
 console.log('Schattepatatjes: project- en updatecontroles geslaagd.');

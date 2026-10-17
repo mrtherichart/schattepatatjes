@@ -306,7 +306,7 @@ function renderOverlay(){
   <p>${mode==='online'?'Alle gezinsleden gebruiken dezelfde boodschappen, taken en profielen. Bij tijdelijk geen bereik worden wijzigingen later verstuurd.':mode==='locked'?'Log opnieuw in met jullie gezamenlijke gezinswachtwoord.':mode==='setup'?'Deze website heeft een PHP-backend. Maak één keer een gezinsruimte aan om jullie telefoons te koppelen. De voorbeeldgegevens worden daarbij vervangen.':'Je kunt de app nu al proberen. Als je hem op je PHP-hosting plaatst, kun je één gedeelde gezinsruimte instellen.'}</p>
   ${mode==='setup'?`<form id="setup-form"><div class="field"><label>Naam van jullie plekje</label><input name="household" value="Ons gezin" maxlength="55" required></div><div class="field-row"><div class="field"><label>Jouw naam</label><input name="owner" maxlength="35" required placeholder="Jij"></div><div class="field"><label>Naam van je partner</label><input name="partner" maxlength="35" required placeholder="Partner"></div></div><div class="field"><label>Installatiesleutel (staat in config.php)</label><input type="text" name="setupKey" required autocomplete="off" placeholder="Eenmalige installatiesleutel"></div><div class="field"><label>Gezamenlijk wachtwoord (minimaal 10 tekens)</label><input type="password" name="password" minlength="10" required autocomplete="new-password"></div><button type="submit" class="gloss-btn full">Maak ons gezin aan</button></form>`:mode==='locked'?`<form id="login-form"><div class="field"><label>Gezinswachtwoord</label><input type="password" name="password" required autocomplete="current-password"></div><button class="gloss-btn full" type="submit">Aanmelden</button></form>`:mode==='online'?`<button class="gloss-btn secondary small" data-action="logout">Afmelden van dit toestel</button>`:`<button class="gloss-btn secondary small" data-action="retry-server">${ico('cloud','sm')} Zoek gezinsserver</button>`}</div>
   ${updatePanel()}
-  <h3 class="form-heading" style="margin-top:23px">Even weten</h3><p class="fineprint">Dit is versie 0.5.0. Foto's blijven klein; er is geen reclame en geen externe analyse. Gegevens staan lokaal op je telefoon en, zodra verbonden, als JSON op je eigen server. Gebruik HTTPS bij publicatie. Maak ook regelmatig een back-up.</p>`;
+  <h3 class="form-heading" style="margin-top:23px">Even weten</h3><p class="fineprint">Dit is versie 0.5.1. Foto's blijven klein; er is geen reclame en geen externe analyse. Gegevens staan lokaal op je telefoon en, zodra verbonden, als JSON op je eigen server. Gebruik HTTPS bij publicatie. Maak ook regelmatig een back-up.</p>`;
  }
  $('#overlay-root').innerHTML=`<div class="modal-shade" data-action="shade-close"><section class="modal-window" role="dialog" aria-modal="true" aria-label="${attr(title)}"><div class="modal-titlebar"><h2>${esc(title)}</h2><button class="icon-button close-modal" aria-label="Sluiten" data-action="close-modal">${ico('close')}</button></div><div class="modal-inner">${content}</div></section></div>`;
  const autofocus=modal.kind==='task'||modal.kind==='grocery';
@@ -338,14 +338,14 @@ function prepareGroceryFromCatalog(p){
 }
 // Android updateverzoeken lopen alleen via de kleine native bridge.
 const androidUpdateAvailable = Boolean(window.SchattepatatjesUpdater);
-let updaterInfo = {status:'idle', version:'0.5.0'};
+let updaterInfo = {status:'idle', version:'0.5.1'};
 function updatePanel(){
   if(!androidUpdateAvailable) return '';
   const u=updaterInfo;
   const messages={idle:'Controleer wanneer je wilt of er een nieuwe Android-versie klaarstaat.',checking:'Even kijken of er iets nieuws is…',current:'Je hebt de nieuwste versie.',downloading:`Nieuwe versie ophalen… ${u.progress||0}%`,installing:'Android opent de installatie. Bevestig de update op je telefoon.',permission:'Sta Schattepatatjes toe om een update te installeren; kom daarna terug naar de app.',error:u.message||'Controleren lukte niet. Probeer het later opnieuw.'};
   const text=u.status==='available'?`Versie ${esc(u.version)} is beschikbaar. ${esc(u.notes||'')}`:messages[u.status]||messages.idle;
   return `<h3 class="form-heading" style="margin-top:24px">App bijwerken</h3><div class="setup-card" id="updater-card">
-    <div class="status-row">${ico('info','sm')} Schattepatatjes voor Android · versie ${esc(window.SchattepatatjesUpdater?.appVersion?.()||'0.5.0')}</div>
+    <div class="status-row">${ico('info','sm')} Schattepatatjes voor Android · versie ${esc(window.SchattepatatjesUpdater?.appVersion?.()||'0.5.1')}</div>
     <p id="updater-message" aria-live="polite">${text}</p>
     ${u.status==='available'?`<button class="gloss-btn" data-action="install-app-update">Download en installeer ${esc(u.version)}</button>`:''}
     ${u.status==='downloading'?`<progress style="width:100%" max="100" value="${Number(u.progress)||0}"></progress>`:''}
