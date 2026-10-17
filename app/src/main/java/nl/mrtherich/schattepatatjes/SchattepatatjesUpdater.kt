@@ -154,9 +154,10 @@ class SchattepatatjesUpdater(
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun signingCerts(info: android.content.pm.PackageInfo): Array<Signature>? {
         return if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners
-        else @Suppress("DEPRECATION") info.signatures
+        else info.signatures
     }
     private fun fingerprint(signature: Signature): String =
         MessageDigest.getInstance("SHA-256").digest(signature.toByteArray())
@@ -169,7 +170,8 @@ class SchattepatatjesUpdater(
         signingCerts(info)?.any { fingerprint(it) == PINNED_CERT } ?: false
     } catch (_: Exception) { false }
 
-    private fun isSameAppAndSigner(apk: File): Boolean = try {
+    private fun isSameAppAndSigner(apk: File): Boolean {
+      return try {
         val flag = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES
             else PackageManager.GET_SIGNATURES
         val pm = activity.packageManager
@@ -183,7 +185,8 @@ class SchattepatatjesUpdater(
         newCerts.size == 1 && oldCerts.size == 1 &&
             fingerprint(newCerts[0]) == PINNED_CERT &&
             oldCerts[0].toByteArray().contentEquals(newCerts[0].toByteArray())
-    } catch (_: Exception) { false }
+      } catch (_: Exception) { false }
+    }
 
     fun onResume() {
         if (Build.VERSION.SDK_INT >= 26 && pendingInstall != null &&
@@ -219,9 +222,14 @@ class SchattepatatjesUpdater(
         val connection = connect(url)
         try {
             connection.inputStream.use { input ->
-                val bytes = input.readNBytes(1024 * 1024 + 1)
-                require(bytes.size <= 1024 * 1024) { "Release-informatie is te groot." }
-                return String(bytes, Charsets.UTF_8)
+                val out = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                var n: Int
+                while (input.read(buffer).also { n = it } >= 0) {
+                    require(out.size() + n <= 1024 * 1024) { "Release-informatie is te groot." }
+                    out.write(buffer, 0, n)
+                }
+                return out.toString("UTF-8")
             }
         } finally { connection.disconnect() }
     }
