@@ -33,8 +33,8 @@ php tests/web-revisions.test.php
 php -l server/api.php
 ```
 
-De Android-testworkflow bouwt een debug-APK en controleert APK-inhoud. De release-workflow is *uitsluitend handmatig*, vereist de bestaande vaste signing-credentials en een expliciete versieophoging. Een debug-APK is **geen** update voor de ondertekende app.
+De Android-testworkflow bouwt een debug-APK en controleert APK-inhoud. De release-workflow start alleen bij een bewuste wijziging van `app/build.gradle.kts` op `main`, of handmatig. Hij vereist de bestaande twee signing-secrets en een nieuw Android-versienummer; gewone web- en serverwijzigingen starten geen release. Een debug-APK is **geen** update voor de ondertekende app.
 
 ## Versie en compatibiliteit
 
-De refactor verandert **geen** Android-releaseversie. De huidige bron volgt versie 0.6.0 (`versionCode 7`); een daadwerkelijke nieuwe release vereist een geteste Android-upgrade, een hoger versienummer en een afzonderlijke handmatige releasehandeling. Een succesvolle build is geen bewijs van succesvolle installatie op een toestel.
+Versie 0.7.0 (`versionCode 8`) bevat de eerder geteste scheiding tussen web, Kotlin en PHP. De release is uitsluitend bedoeld als ondertekende upgrade vanaf v0.6.0 met dezelfde sleutel en package-ID. GitHub controleert build, assets en certificaat; een daadwerkelijke N→N+1-installatie op een telefoon blijft afzonderlijk te verifiëren.

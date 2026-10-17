@@ -1,6 +1,11 @@
 name: Signed Android release
-# Explicit release only. A web or PHP change never creates an Android Release.
+# Only a deliberate Android version bump starts a signed release.
+# Web/PHP edits never publish an APK. Manual reruns remain available.
 on:
+  push:
+    branches: [main]
+    paths:
+      - app/build.gradle.kts
   workflow_dispatch:
 
 permissions:
