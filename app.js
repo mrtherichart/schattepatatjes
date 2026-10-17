@@ -1,5 +1,6 @@
 /* Schattepatatjes — one interface for the Android WebView and the iPhone web app.
    No framework, no remote JavaScript, no tracking. */
+window.SCHATTEPATATJES_NATIVE = Boolean(window.SchattepatatjesUpdater);
 const storage = (() => {try {const key='bijons-check';localStorage.setItem(key,'1');localStorage.removeItem(key);return localStorage;} catch {const mem=new Map();return {getItem:k=>mem.get(k)||null,setItem:(k,v)=>mem.set(k,String(v))};}})();
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
