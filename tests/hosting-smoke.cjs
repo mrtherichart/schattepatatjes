@@ -13,8 +13,10 @@ function copy(src,dst){fs.mkdirSync(path.dirname(dst),{recursive:true});fs.copyF
 for(const f of ['index.php','sw.php'])copy(`deploy/hosting/${f}`,`${sp}/${f}`);
 copy('deploy/lib/WebRevisions.php',`${sp}/WebRevisions.php`);
 copy('server/api.php',`${sp}/api.php`);
+for(const f of fs.readdirSync('server/lib')) copy(`server/lib/${f}`,`${sp}/lib/${f}`);
 fs.writeFileSync(`${sp}/config.php`,`<?php define('BIJONS_SETUP_KEY','test-installation-token-not-production');\n`);
 const webFiles=['index.html','app.js','styles.css','sw.js','manifest.webmanifest','assets/icon.svg','assets/icon-192.png','assets/icon-512.png','assets/apple-touch-icon.png'];
+for (const dir of ['modules','modules/views','styles']) for(const f of fs.readdirSync(`web/${dir}`)) if(f.endsWith('.js') || f.endsWith('.css')) webFiles.push(`${dir}/${f}`);
 for(const file of webFiles)copy(`web/${file}`,`${sp}/static/revisions/${commit}/${file}`);
 fs.mkdirSync(`${sp}/.web-state`,{recursive:true});
 fs.writeFileSync(`${sp}/.web-state/current.json`,JSON.stringify({current:commit,previous:null}));
@@ -28,9 +30,11 @@ async function main(){
   assert(ready,'PHP preview starts');
   let res=await fetch(`${addr}/sp/`);let body=await res.text();
   assert.equal(res.status,200);assert(body.includes(`<base href="/sp/static/revisions/${commit}/">`));
-  assert(body.includes('Schattepatatjes'));assert(body.includes('app.js?v=7'));
+  assert(body.includes('Schattepatatjes'));assert(body.includes('app.js?v=8'));
   res=await fetch(`${addr}/sp/static/revisions/${commit}/app.js`);
   assert.equal(res.status,200);body=await res.text();assert(body.includes('https://mrtherich.nl/sp/api.php'));
+  res=await fetch(`${addr}/sp/static/revisions/${commit}/modules/model.js`);assert.equal(res.status,200);
+  assert((await res.text()).includes('applyOperation'));
   res=await fetch(`${addr}/sp/sw.php`);assert.equal(res.status,200);body=await res.text();
   assert(body.includes(commit));assert(!body.includes('__WEB_REVISION__'));
   res=await fetch(`${addr}/sp/api.php?action=health`);const health=await res.json();

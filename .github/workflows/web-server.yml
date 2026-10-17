@@ -21,11 +21,17 @@ jobs:
       - name: Verify web and API
         run: |
           node --check web/app.js
+          for f in web/modules/*.js web/modules/views/*.js; do node --check "$f"; done
           node tests/check-project.cjs
+          node tests/modules.test.mjs
+          node tests/controller-smoke.mjs
           node tests/server-diagnostics.test.cjs
           php -l server/api.php
+          for f in server/lib/*.php; do php -l "$f"; done
           php -l deploy/lib/WebRevisions.php
           php -l deploy/hosting/index.php
           php -l deploy/hosting/web-update.php
           php -l deploy/hosting/sw.php
           php tests/web-revisions.test.php
+          php tests/full-web-revision.test.php
+          node tests/hosting-smoke.cjs

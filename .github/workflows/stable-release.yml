@@ -65,10 +65,15 @@ jobs:
         if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
         run: |
           node --check web/app.js
+          for f in web/modules/*.js web/modules/views/*.js; do node --check "$f"; done
           node tests/check-project.cjs
+          node tests/modules.test.mjs
+          node tests/controller-smoke.mjs
           node tests/server-diagnostics.test.cjs
           php tests/web-revisions.test.php
+          php tests/full-web-revision.test.php
           php -l server/api.php
+          for f in server/lib/*.php; do php -l "$f"; done
       - name: Restore the permanent key on the GitHub runner
         if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
         shell: bash
@@ -92,7 +97,7 @@ jobs:
           "$TOOLS/apksigner" verify --verbose --print-certs --min-sdk-version 24 "$APK" | tee "$RUNNER_TEMP/signature.txt"
           grep -iq 'Signer #1 certificate SHA-256 digest: ca6ff34569063ff00cb086d18ca95e24a1bb9d479c9df07f1892ac6d9e73ea77' "$RUNNER_TEMP/signature.txt"
           "$TOOLS/aapt" dump badging "$APK" | grep -F "package: name='nl.mrtherich.schattepatatjes'"
-          for f in assets/index.html assets/app.js assets/styles.css assets/icon.svg; do unzip -l "$APK" | grep -F "$f"; done
+          for f in assets/index.html assets/app.js assets/styles.css assets/icon.svg assets/modules/common.js assets/modules/model.js assets/modules/views/shopping.js assets/styles/base.css assets/styles/components.css; do unzip -l "$APK" | grep -F "$f"; done
           cp "$APK" "$RUNNER_TEMP/Schattepatatjes.apk"
       - name: Publish signed APK as GitHub Release
         if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'

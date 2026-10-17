@@ -49,7 +49,7 @@ dependencies {
 
 val bundleWeb by tasks.registering(Copy::class) {
     from(rootProject.layout.projectDirectory.dir("web")) {
-        include("index.html", "app.js", "styles.css", "manifest.webmanifest", "assets/**")
+        include("index.html", "app.js", "styles.css", "manifest.webmanifest", "assets/**", "modules/**", "styles/**")
         // Static web files only. PHP, credentials and storage are outside web/.
     }
     into(layout.buildDirectory.dir("generated/familyWeb"))

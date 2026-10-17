@@ -2,7 +2,7 @@
 const VERSION='__WEB_REVISION__';
 const CACHE='schattepatatjes-web-'+VERSION;
 const PREFIX='/sp/static/revisions/'+VERSION+'/';
-const SHELL=['/sp/',PREFIX+'index.html',PREFIX+'app.js',PREFIX+'styles.css',PREFIX+'assets/icon.svg',PREFIX+'assets/icon-192.png',PREFIX+'assets/icon-512.png',PREFIX+'manifest.webmanifest'];
+const SHELL=['/sp/',PREFIX+'index.html',PREFIX+'app.js',PREFIX+'styles.css',PREFIX+'styles/base.css',PREFIX+'styles/components.css',PREFIX+'styles/connection.css',PREFIX+'styles/dialogs.css',PREFIX+'styles/responsive.css',PREFIX+'modules/api-client.js',PREFIX+'modules/common.js',PREFIX+'modules/model.js',PREFIX+'modules/update-ui.js',PREFIX+'modules/views/dialogs.js',PREFIX+'modules/views/home.js',PREFIX+'modules/views/people.js',PREFIX+'modules/views/shopping.js',PREFIX+'modules/views/tasks.js',PREFIX+'assets/icon.svg',PREFIX+'assets/icon-192.png',PREFIX+'assets/icon-512.png',PREFIX+'manifest.webmanifest'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('schattepatatjes-web-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{

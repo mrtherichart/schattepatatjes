@@ -32,6 +32,8 @@ final class WebRevisions {
     }
     private static function allowed(string $path): bool {
         if (in_array($path, self::REQUIRED, true)) return true;
+        if ((bool)preg_match('~^styles/[a-zA-Z0-9_-]+\.css$~D', $path)) return true;
+        if ((bool)preg_match('~^modules/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*\.js$~D', $path)) return true;
         return (bool)preg_match('~^assets/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*\.(?:svg|png|webp|jpg|jpeg|gif|ico)$~D', $path);
     }
     private static function ensureDir(string $path): void {
@@ -113,9 +115,33 @@ final class WebRevisions {
                 self::ensureDir(dirname($file));
                 if (file_put_contents($file,$bytes,LOCK_EX)===false) throw new RuntimeException('Schrijven mislukt.');
             }
+            self::verifyStaticImports($staging);
             if (!rename($staging,$destination)) throw new RuntimeException('Revisie activeren mislukt.');
         } finally { if (is_dir($staging)) self::removeTree($staging); }
         return count($items);
+    }
+    /** Reject a verified Git revision if it references a missing local JS/CSS module. */
+    private static function verifyStaticImports(string $staging): void {
+        $walk = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($staging, FilesystemIterator::SKIP_DOTS));
+        foreach ($walk as $entry) {
+            if (!$entry->isFile()) continue;
+            $source = $entry->getPathname();
+            $extension = strtolower(pathinfo($source, PATHINFO_EXTENSION));
+            if ($extension !== 'js' && $extension !== 'css') continue;
+            $contents = (string)file_get_contents($source);
+            if ($extension === 'js') {
+                preg_match_all('~\bimport\s+(?:[^\n;]+?\s+from\s+)?[\x27"]([^\x27"]+)[\x27"]~m', $contents, $matches);
+            } else {
+                preg_match_all('~@import\s+(?:url\()?\s*[\x27"]?([^\x27")\s]+)~i', $contents, $matches);
+            }
+            foreach ($matches[1] as $reference) {
+                if (!str_starts_with($reference, './') && !str_starts_with($reference, '../'))
+                    throw new RuntimeException('Externe of absolute module-import geweigerd.');
+                $target = realpath(dirname($source) . '/' . $reference);
+                if ($target === false || !str_starts_with($target, realpath($staging) . DIRECTORY_SEPARATOR))
+                    throw new RuntimeException('Ontbrekende module of CSS-import: ' . $reference);
+            }
+        }
     }
     private static function removeTree(string $dir): void {
         foreach (new DirectoryIterator($dir) as $node) {

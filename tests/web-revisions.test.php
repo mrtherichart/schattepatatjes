@@ -24,13 +24,15 @@ function removeAll(string $dir):void{foreach(new DirectoryIterator($dir) as $i){
 try {
     $one=str_repeat('a',40);$two=str_repeat('b',40);
     $first=[];foreach($required as $file)$first[$file]='test content for '.$file;
+    $first['modules/common.js']='export const test = true;';
+    $first['styles/base.css']='body { color: red; }';
     $first['index.html']='<!doctype html><html><head></head><body>FIRST</body></html>';
-    verify($rev->download($one,mocked($one,$first))===count($required),'download number');
+    verify($rev->download($one,mocked($one,$first))===count($first),'download number');
     verify($rev->current()===null,'No implicit activation');
     $rev->activate($one);
     verify($rev->current()['current']===$one,'First activation');
     $second=$first;$second['index.html']=str_replace('FIRST','SECOND',$first['index.html']);
-    verify($rev->download($two,mocked($two,$second))===count($required),'Second download');
+    verify($rev->download($two,mocked($two,$second))===count($second),'Second download');
     $rev->activate($two);
     verify($rev->current()['current']===$two,'New revision active');
     verify($rev->rollback()===$one,'Previous revision restored');
@@ -41,6 +43,11 @@ try {
         $callback=mocked('', $first);if(str_contains($url,'/web/index.html'))return 'CORRUPTED'; return $callback($url,$limit);
     });throw new RuntimeException('Corrupted Git blob should fail');}
     catch (RuntimeException $e){verify(str_contains($e->getMessage(),'integriteitscontrole'),'Corrupt blob rejected');}
+    $missing=$first;
+    $missing['app.js']='import {thing} from "./modules/does-not-exist.js";';
+    try{$rev->download(str_repeat('f',40),mocked('',$missing));throw new RuntimeException('Missing module should fail');}
+    catch (RuntimeException $e){verify(str_contains($e->getMessage(),'Ontbrekende module'),'Missing import rejected');}
+    verify($rev->current()['current']===$one,'Missing module does not activate');
     verify($rev->current()['current']===$one,'Failed download leaves website unchanged');
     foreach($baseline as $file=>$digest)verify(hash_file('sha256',$file)===$digest,'Server data/config changed: '.$file);
     try{$rev->activate('../../api.php');throw new RuntimeException('Traversal not rejected');}catch(RuntimeException $e){verify(str_contains($e->getMessage(),'Ongeldige'),'Traversal rejected');}

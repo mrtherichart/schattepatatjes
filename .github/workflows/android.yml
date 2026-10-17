@@ -35,7 +35,10 @@ jobs:
       - name: Frontend + compatibility checks
         run: |
           node --check web/app.js
+          for f in web/modules/*.js web/modules/views/*.js; do node --check "$f"; done
           node tests/check-project.cjs
+          node tests/modules.test.mjs
+          node tests/controller-smoke.mjs
       - name: Build Kotlin debug APK
         run: gradle --no-daemon :app:assembleDebug
       - name: Verify debug APK and embedded assets
@@ -44,7 +47,7 @@ jobs:
           APK=app/build/outputs/apk/debug/app-debug.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --min-sdk-version 24 "$APK"
           unzip -t "$APK" | tail -1
-          for f in assets/index.html assets/app.js assets/styles.css assets/icon.svg; do
+          for f in assets/index.html assets/app.js assets/styles.css assets/icon.svg assets/modules/common.js assets/modules/model.js assets/modules/views/shopping.js assets/styles/base.css assets/styles/components.css; do
             unzip -l "$APK" | grep -F "$f"
           done
           ! unzip -l "$APK" | grep -Eq 'assets/(api\.php|config\.php|web-config\.php)'

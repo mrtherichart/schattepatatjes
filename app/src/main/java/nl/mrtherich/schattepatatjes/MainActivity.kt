@@ -106,12 +106,17 @@ class MainActivity : Activity() {
         webView.loadUrl(ENTRY)
     }
 
-    private fun isBundledAsset(path: String): Boolean = path in setOf(
+    private fun isBundledAsset(path: String): Boolean {
+        // A module must stay inside our embedded, immutable assets. No remote JS fallback.
+        if (path.matches(Regex("^/sp/styles/[a-zA-Z0-9_-]+\\.css$"))) return true
+        if (path.matches(Regex("^/sp/modules/(?:[a-zA-Z0-9_-]+/)*[a-zA-Z0-9_-]+\\.js$"))) return true
+        return path in setOf(
         "${PREFIX}index.html", "${PREFIX}app.js", "${PREFIX}styles.css",
         "${PREFIX}manifest.webmanifest", "${PREFIX}assets/icon.svg",
         "${PREFIX}assets/icon-192.png", "${PREFIX}assets/icon-512.png",
         "${PREFIX}assets/apple-touch-icon.png"
-    )
+        )
+    }
 
     private inner class UpdateBridge {
         @JavascriptInterface fun appVersion(): String = updates.appVersion()
