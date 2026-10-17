@@ -72,7 +72,9 @@ class SchattepatatjesUpdater(
                 require(sha.matches(Regex("sha256:[a-fA-F0-9]{64}"))) {
                     "GitHub heeft geen geldig SHA-256-controlegetal verstrekt."
                 }
-                if (compareVersions(tag, appVersion()) <= 0) {
+                val releaseBuild = Regex("Android-build: *([0-9]+)").find(data.optString("body"))?.groupValues?.get(1)?.toLongOrNull()
+                val isNewer = if (releaseBuild != null) releaseBuild > versionCode() else compareVersions(tag, appVersion()) > 0
+                if (!isNewer) {
                     candidate = null
                     notify("current", "Je hebt de nieuwste versie.")
                 } else if (!hasStableSignature()) {

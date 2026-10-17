@@ -1,0 +1,34 @@
+name: Foundation v0.0.2 checks
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: gd, curl, mbstring, openssl, phar, pcntl
+          tools: composer:v2
+      - run: npm ci
+      - run: npm run check && npm test && npm run test:server && npm run test:http
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: composer install --working-dir=server --no-dev --no-interaction --prefer-dist
+      - name: Package PHP backend and maintenance commands
+        run: |
+          mkdir -p artifacts
+          zip -qr artifacts/Schattepatatjes-server-v0.0.2.zip server scripts/backup.php scripts/cleanup-media.php scripts/notification-worker.php RELEASE-v0.0.2.md contracts -x 'server/config.php'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Schattepatatjes-server-v0.0.2
+          path: artifacts/Schattepatatjes-server-v0.0.2.zip

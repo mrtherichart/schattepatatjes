@@ -56,7 +56,7 @@ function mutate(array &$s,array $op): void {
         $name=val($v['name']??'',140);if(!$name)fail('Geef een taaknaam op.');
         $assignee=val($v['assignee']??'',90);if($assignee!==''&&!personOk($s,$assignee))fail('Onbekende persoon.');
         foreach($s['tasks'] as $t)if($t['id']===$id)return;
-        $repeat=in_array(($v['repeat']??'none'),['none','daily','weekly','monthly'],true)?$v['repeat']:'none';
+        $repeat=in_array(($v['repeat']??'none'),['none','daily','weekly','monthly'],true)?($v['repeat']??'none'):'none';
         $s['tasks'][]=['id'=>$id,'name'=>$name,'assignee'=>$assignee,'due'=>dueVal($v['due']??''),'repeat'=>$repeat,'done'=>false,'createdAt'=>$at];
     }elseif($type==='editTask'){
         foreach($s['tasks'] as &$t)if($t['id']===$id){

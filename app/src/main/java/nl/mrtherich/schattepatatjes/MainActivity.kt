@@ -22,6 +22,9 @@ class MainActivity : Activity() {
     private lateinit var updates: SchattepatatjesUpdater
     private var chooser: android.webkit.ValueCallback<Array<Uri>>? = null
     private val chooserCode = 42
+    private var geoCallback: android.webkit.GeolocationPermissions.Callback? = null
+    private var geoOrigin: String? = null
+    private var notificationProfile: String? = null
 
     companion object {
         private const val ORIGIN = "https://mrtherich.nl"
@@ -40,6 +43,7 @@ class MainActivity : Activity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
+            setGeolocationEnabled(true)
             allowFileAccess = false
             allowContentAccess = true // Android photo picker grants individual content URIs.
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
@@ -55,6 +59,7 @@ class MainActivity : Activity() {
             }
         }
         webView.addJavascriptInterface(UpdateBridge(), "SchattepatatjesUpdater")
+        webView.addJavascriptInterface(DeviceBridge(), "SchattepatatjesDevice")
 
         // AndroidX locally serves index.html/CSS/JS at the *same HTTPS origin* as PHP.
         // API requests are never intercepted: WebView sends their real POST bodies,
@@ -86,6 +91,16 @@ class MainActivity : Activity() {
             }
         }
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onGeolocationPermissionsShowPrompt(origin: String, callback: android.webkit.GeolocationPermissions.Callback) {
+                if (origin.trimEnd('/') != ORIGIN) { callback.invoke(origin, false, false); return }
+                if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    callback.invoke(origin, true, false)
+                } else {
+                    geoCallback?.invoke(geoOrigin, false, false)
+                    geoCallback = callback; geoOrigin = origin
+                    requestPermissions(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION), 43)
+                }
+            }
             override fun onShowFileChooser(
                 view: WebView, callback: android.webkit.ValueCallback<Array<Uri>>,
                 params: FileChooserParams
@@ -103,7 +118,8 @@ class MainActivity : Activity() {
             }
         }
         setContentView(webView)
-        webView.loadUrl(ENTRY)
+        val profile = intent.getStringExtra("profile")
+        webView.loadUrl(if (profile != null && profile.matches(Regex("^[a-zA-Z0-9_-]{1,90}$"))) "$ENTRY?profile=$profile" else ENTRY)
     }
 
     private fun isBundledAsset(path: String): Boolean {
@@ -116,6 +132,33 @@ class MainActivity : Activity() {
         "${PREFIX}assets/icon-192.png", "${PREFIX}assets/icon-512.png",
         "${PREFIX}assets/apple-touch-icon.png"
         )
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 43) {
+            geoCallback?.invoke(geoOrigin, grantResults.any { it == android.content.pm.PackageManager.PERMISSION_GRANTED }, false)
+            geoCallback = null; geoOrigin = null
+        }
+        if (requestCode == 44) {
+            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) notificationProfile?.let { FamilyNotifications.enable(this, it) }
+            notificationProfile = null
+        }
+    }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val profile = intent.getStringExtra("profile") ?: return
+        if (profile.matches(Regex("^[a-zA-Z0-9_-]{1,90}$"))) webView.loadUrl("$ENTRY?profile=$profile")
+    }
+    private inner class DeviceBridge {
+        @JavascriptInterface fun enableNotifications(profile: String) = runOnUiThread {
+            if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                notificationProfile = profile
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 44)
+            } else FamilyNotifications.enable(this@MainActivity, profile)
+        }
+        @JavascriptInterface fun disableNotifications() = runOnUiThread { FamilyNotifications.disable(this@MainActivity) }
+        @JavascriptInterface fun flushCookies() = CookieManager.getInstance().flush()
     }
 
     private inner class UpdateBridge {
@@ -149,6 +192,7 @@ class MainActivity : Activity() {
         chooser = null
         if (::webView.isInitialized) {
             webView.removeJavascriptInterface("SchattepatatjesUpdater")
+            webView.removeJavascriptInterface("SchattepatatjesDevice")
             webView.destroy()
         }
         super.onDestroy()

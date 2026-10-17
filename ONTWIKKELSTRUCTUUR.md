@@ -1,3 +1,5 @@
+> **v0.0.2:** De actuele functionele architectuur staat in [contracts/foundation-v2.md](contracts/foundation-v2.md); installatie en integraties in [RELEASE-v0.0.2.md](RELEASE-v0.0.2.md). De oudere beschrijving hieronder documenteert de vorige interface.
+
 # Schattepatatjes — ontwikkelstructuur
 
 **Status:** leidende ontwikkelafspraken; bronscheiding en offline webpublicatie zijn in de VM geïmplementeerd en lokaal getest. Productiehosting en een APK-upgrade op een echt toestel blijven afzonderlijk te valideren.  

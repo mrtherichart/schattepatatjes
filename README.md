@@ -1,3 +1,5 @@
+> **v0.0.2:** De actuele functionele architectuur staat in [contracts/foundation-v2.md](contracts/foundation-v2.md); installatie en integraties in [RELEASE-v0.0.2.md](RELEASE-v0.0.2.md). De oudere beschrijving hieronder documenteert de vorige interface.
+
 # Schattepatatjes
 
 Persoonlijke gezinsapp voor boodschappen, taken, profielen en krabbels. De interface is voor Android (Kotlin/WebView) en browser/PWA identiek; de gezinsgegevens worden via een zelfstandige PHP/JSON-server gesynchroniseerd.

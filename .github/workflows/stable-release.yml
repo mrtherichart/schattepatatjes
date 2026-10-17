@@ -61,9 +61,27 @@ jobs:
           test -d "$ANDROID_HOME"
           test -f "$ANDROID_HOME/platforms/android-36/android.jar" || sdkmanager --install 'platforms;android-36'
           test -d "$ANDROID_HOME/build-tools/36.0.0" || sdkmanager --install 'build-tools;36.0.0'
+      - uses: actions/setup-node@v4
+        if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
+        with:
+          node-version: '24'
+      - uses: shivammathur/setup-php@v2
+        if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
+        with:
+          php-version: '8.3'
+          extensions: gd, curl, mbstring, openssl, phar, pcntl
+          tools: composer:v2
       - name: Verify app
         if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
         run: |
+          npm ci
+          npm run check
+          npm test
+          npm run test:server
+          npm run test:http
+          npx playwright install --with-deps chromium
+          npm run test:browser
+          composer install --working-dir=server --no-dev --no-interaction --prefer-dist
           node --check web/app.js
           for f in web/modules/*.js web/modules/views/*.js; do node --check "$f"; done
           node tests/check-project.cjs
@@ -97,7 +115,7 @@ jobs:
           "$TOOLS/apksigner" verify --verbose --print-certs --min-sdk-version 24 "$APK" | tee "$RUNNER_TEMP/signature.txt"
           grep -iq 'Signer #1 certificate SHA-256 digest: ca6ff34569063ff00cb086d18ca95e24a1bb9d479c9df07f1892ac6d9e73ea77' "$RUNNER_TEMP/signature.txt"
           "$TOOLS/aapt" dump badging "$APK" | grep -F "package: name='nl.mrtherich.schattepatatjes'"
-          for f in assets/index.html assets/app.js assets/styles.css assets/icon.svg assets/modules/common.js assets/modules/model.js assets/modules/views/shopping.js assets/styles/base.css assets/styles/components.css; do unzip -l "$APK" | grep -F "$f"; done
+          for f in assets/index.html assets/app.js assets/styles.css assets/assets/icon.svg assets/modules/foundation/bootstrap.js assets/modules/foundation/sync.js assets/modules/features/customization.js assets/modules/common.js assets/modules/model.js assets/modules/views/shopping.js assets/styles/base.css assets/styles/components.css; do unzip -l "$APK" | grep -F "$f"; done
           cp "$APK" "$RUNNER_TEMP/Schattepatatjes.apk"
       - name: Publish signed APK as GitHub Release
         if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
@@ -105,9 +123,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
-          gh release create "$TAG" "$RUNNER_TEMP/Schattepatatjes.apk" \
+          CODE=$(sed -n 's/^[[:space:]]*versionCode = \([0-9]*\)/\1/p' app/build.gradle.kts | head -1)
+          cp RELEASE-v0.0.2.md "$RUNNER_TEMP/release-notes.md"
+          printf '\nAndroid-build: %s\n' "$CODE" >> "$RUNNER_TEMP/release-notes.md"
+          zip -qr "$RUNNER_TEMP/Schattepatatjes-server.zip" server scripts/backup.php scripts/cleanup-media.php scripts/notification-worker.php RELEASE-v0.0.2.md contracts -x 'server/config.php'
+          gh release create "$TAG" "$RUNNER_TEMP/Schattepatatjes.apk" "$RUNNER_TEMP/Schattepatatjes-server.zip" \
             --target "$GITHUB_SHA" --title "Schattepatatjes $TAG" \
-            --notes 'Schattepatatjes Android. Kotlin + offline webinterface. Open Instellingen > App bijwerken for subsequent updates.' \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
             --latest
       - name: Remove private key material
         if: always()

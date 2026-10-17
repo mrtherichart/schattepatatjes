@@ -9,8 +9,8 @@ android {
         applicationId = "nl.mrtherich.schattepatatjes"
         minSdk = 24
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.8.0"
+        versionCode = 10
+        versionName = "0.0.2"
     }
 
     signingConfigs {
@@ -45,6 +45,7 @@ android {
 dependencies {
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
 }
 
 val bundleWeb by tasks.registering(Copy::class) {

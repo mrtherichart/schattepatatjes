@@ -21,6 +21,8 @@ require_once __DIR__.'/lib/http.php';
 require_once __DIR__.'/lib/storage.php';
 require_once __DIR__.'/lib/mutations.php';
 
+if (($_GET['action']??'')==='foundation') { require __DIR__.'/framework/router.php'; exit; }
+
 $action=$_GET['action']??'state';
 $method=$_SERVER['REQUEST_METHOD']??'GET';
 if (!in_array($action,['health','state','setup','login','logout','mutate','product-search'],true))fail('Onbekende actie.',404);
@@ -85,7 +87,7 @@ if($action==='state'){
 }
 if($action==='mutate'){
     auth();$op=input();if(!isId($op['id']??''))fail('Ongeldige bewerkingscode.');
-    $fd=lockFile($dir);$s=readJson($file);if(!$s)fail('Geen gezinsgegevens.',500);
+    $fd=lockFile($dir);if(is_file($dir.'/foundation.json'))fail('Werk de app bij naar v0.0.2; oude clients kunnen niet meer schrijven.',426);$s=readJson($file);if(!$s)fail('Geen gezinsgegevens.',500);
     if(!in_array($op['id'],$s['processedOps']??[],true)){
         mutate($s,$op);
         $s['processedOps'][]=$op['id'];$s['processedOps']=array_slice($s['processedOps'],-250);

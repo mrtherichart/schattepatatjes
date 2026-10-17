@@ -1,3 +1,5 @@
+> **v0.0.2:** De actuele functionele architectuur staat in [contracts/foundation-v2.md](contracts/foundation-v2.md); installatie en integraties in [RELEASE-v0.0.2.md](RELEASE-v0.0.2.md). De oudere beschrijving hieronder documenteert de vorige interface.
+
 # Modulegrenzen — Schattepatatjes
 
 Doel: functionaliteit onderhouden of vervangen zonder een andere laag mee te verbouwen. Dit is een onderhoudscontract, geen framework of plug-insysteem.

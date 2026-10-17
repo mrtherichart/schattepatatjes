@@ -23,3 +23,7 @@
 
 # Ontwerpvoorbeelden staan alleen in de VM/Downloads
 /preview-*.png
+
+node_modules/
+server/vendor/
+artifacts/
