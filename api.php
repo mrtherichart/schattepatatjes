@@ -165,7 +165,7 @@ function mutate(array &$s,array $op): void {
 
 $action=$_GET['action']??'state';
 $method=$_SERVER['REQUEST_METHOD']??'GET';
-if (!in_array($action,['state','setup','login','logout','mutate','product-search'],true))fail('Onbekende actie.',404);
+if (!in_array($action,['health','state','setup','login','logout','mutate','product-search'],true))fail('Onbekende actie.',404);
 if (in_array($action,['setup','login','logout','mutate'],true)&&$method!=='POST')fail('POST vereist.',405);
 if ($method==='POST'){
     $origin=$_SERVER['HTTP_ORIGIN']??'';
@@ -173,6 +173,20 @@ if ($method==='POST'){
 }
 $dir=storage();
 $file=$dir.'/household.json';$authFile=$dir.'/account.json';
+if ($action==='health'){
+    // No household contents or secrets are exposed by this endpoint.
+    $configured=is_file($file)&&is_file($authFile);
+    $loggedIn=!empty($_SESSION['bijons_auth']);
+    $reply=['ok'=>true,'service'=>'schattepatatjes-api','version'=>'0.6',
+        'serverTime'=>gmdate('c'),'configured'=>$configured,'authenticated'=>$loggedIn,
+        'storageWritable'=>is_writable($dir)];
+    if($configured&&$loggedIn){
+        $current=readJson($file);
+        if(!$current)fail('De gezinsgegevens zijn niet leesbaar.',500);
+        $reply['revision']=(int)($current['revision']??0);
+    }
+    result($reply);
+}
 if ($action==='setup'){
     if(is_file($file))fail('Dit gezin is al ingesteld.',409);
     $v=input();

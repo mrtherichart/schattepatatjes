@@ -62,6 +62,7 @@ jobs:
         run: |
           node --check app.js
           node tests/check-project.cjs
+          node tests/server-diagnostics.test.cjs
           php -l api.php
       - name: Restore the permanent key on the GitHub runner
         if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'

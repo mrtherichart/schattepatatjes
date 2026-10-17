@@ -86,6 +86,108 @@ let flushBusy = false;
 let currentFileData = '';
 let toastHandle = null;
 let lastPollAt = 0;
+const apiAddress = new URL('api.php', document.baseURI).href;
+const previousSync = getSaved('bijons-last-sync-v1', null);
+const diagnostics = {
+  phase: 'checking', checkedAt: 0, lastContact: 0,
+  lastSync: previousSync, latency: null, httpStatus: null,
+  error: '', configured: null, authenticated: null, version: '',
+  storageWritable: null, revision: null
+};
+let probeBusy = false;
+function readableTime(timestamp){
+ if(!timestamp)return 'Nog nooit';
+ return new Intl.DateTimeFormat('nl-NL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(timestamp));
+}
+function recordConnection(ok, details={}){
+ diagnostics.checkedAt = Date.now();
+ diagnostics.latency = details.latency ?? null;
+ diagnostics.httpStatus = details.status ?? null;
+ if(ok){
+  diagnostics.lastContact=Date.now();
+  diagnostics.phase='ok';
+  diagnostics.error='';
+  if(details.result?.service==='schattepatatjes-api'){
+   diagnostics.configured=details.result.configured;
+   diagnostics.authenticated=details.result.authenticated;
+   diagnostics.version=details.result.version||'';
+   diagnostics.storageWritable=details.result.storageWritable;
+   diagnostics.revision=details.result.revision??null;
+  }
+ }else{
+  diagnostics.error=details.error||'Onbekende verbindingsfout.';
+  diagnostics.phase=details.status===401?'auth':details.status===0?'offline':'error';
+  if(details.status>0)diagnostics.lastContact=Date.now();
+ }
+ updateConnectionDisplay();
+}
+function markSynced(){
+ const timestamp=new Date().toISOString();
+ diagnostics.lastSync=timestamp;
+ try{storage.setItem('bijons-last-sync-v1',JSON.stringify(timestamp));}catch{}
+ updateConnectionDisplay();
+}
+function serverPresentation(){
+ if(diagnostics.phase==='checking' && !diagnostics.checkedAt)return {label:'Verbinding controleren',style:'checking',detail:'Contact maken met de gezinsserver…'};
+ if(diagnostics.phase==='error'||diagnostics.phase==='offline')return {label:outbox.length?`${outbox.length} wachten op synchronisatie`:diagnostics.phase==='offline'?'Geen serververbinding':'Server geeft een fout',style:'offline',detail:diagnostics.error};
+ if(diagnostics.phase==='auth'||mode==='locked')return {label:'Aanmelden nodig',style:'warning',detail:'De server is bereikbaar, maar je moet je aanmelden.'};
+ if(mode==='setup')return {label:'Gezin instellen',style:'warning',detail:'De server werkt, maar het gezin is nog niet ingesteld.'};
+ if(mode==='online'){
+  if(!navigator.onLine)return {label:outbox.length?`${outbox.length} wachten`:'Geen internet',style:'offline',detail:'Wijzigingen worden bewaard tot er weer verbinding is.'};
+  if(outbox.length)return {label:`${outbox.length} nog te versturen`,style:'warning',detail:'De wijzigingen staan veilig op dit toestel en wachten op de server.'};
+  if(diagnostics.phase==='checking')return {label:'Synchronisatie controleren',style:'checking',detail:'Contact met de server controleren.'};
+  return {label:'Gesynchroniseerd',style:'connected',detail:'De gezinsgegevens zijn bijgewerkt.'};
+ }
+ return {label:'Alleen op dit toestel',style:'local',detail:'Dit zijn lokale gegevens. Je deelt ze nog niet met je gezin.'};
+}
+function connectionPanel(){
+ const p=serverPresentation();
+ const statusText=diagnostics.httpStatus ? `HTTP ${diagnostics.httpStatus}` : 'Geen HTTP-antwoord';
+ const known=diagnostics.configured===null?'Onbekend':diagnostics.configured?'Geïnstalleerd':'Nog niet ingesteld';
+ const auth=diagnostics.authenticated===null?'Onbekend':diagnostics.authenticated?'Aangemeld':'Niet aangemeld';
+ return `<div class="connection-panel ${p.style}" aria-live="polite">
+  <div class="connection-heading"><span class="connection-light"></span><strong>${esc(p.label)}</strong></div>
+  <p class="connection-explain">${esc(p.detail)}</p>
+  ${(diagnostics.phase==='error'||diagnostics.phase==='offline')?`<div class="connection-error" role="status">${ico('info','sm')} ${esc(diagnostics.error)}</div>`:''}
+  <div class="connection-facts">
+   <div><span>Gezinsserver</span><strong>${diagnostics.phase==='offline'?'Geen antwoord':diagnostics.httpStatus?`HTTP ${diagnostics.httpStatus}`:'Nog niet gecontroleerd'}</strong></div>
+   <div><span>Gezin / toegang</span><strong>${esc(known)} · ${esc(auth)}</strong></div>
+   <div><span>Laatste synchronisatie</span><strong>${esc(readableTime(diagnostics.lastSync))}</strong></div>
+   <div><span>Wachtende wijzigingen</span><strong>${outbox.length}</strong></div>
+  </div>
+  <div class="connection-actions">
+   <button type="button" class="gloss-btn secondary small" data-action="test-server">${ico('cloud','sm')} Verbinding testen</button>
+   ${mode==='online'?`<button type="button" class="gloss-btn small" data-action="sync-now">${ico('repeat','sm')} Nu synchroniseren</button>`:''}
+  </div>
+  <details class="connection-tech"><summary>Technische details</summary>
+   <div>API-adres: <code>${esc(apiAddress)}</code></div>
+   <div>Laatste controle: ${esc(readableTime(diagnostics.checkedAt))} · ${esc(statusText)}</div>
+   <div>Reactietijd: ${diagnostics.latency===null?'—':`${Math.round(diagnostics.latency)} ms`}</div>
+   <div>API-versie: ${esc(diagnostics.version||'Onbekend')} · Revisie: ${diagnostics.revision??'—'}</div>
+   <div>Serveropslag schrijfbaar: ${diagnostics.storageWritable===null?'Onbekend':diagnostics.storageWritable?'Ja':'Nee'}</div>
+   <button type="button" class="quiet-link" data-action="copy-diagnostics">Kopieer diagnose (zonder wachtwoord)</button>
+  </details>
+ </div>`;
+}
+function updateConnectionDisplay(){
+ const trigger=$('#connection-trigger');
+ if(trigger)trigger.innerHTML=syncLabel();
+ const node=$('#connection-details');
+ if(node){
+  const opened=Boolean(node.querySelector('details')?.open);
+  node.innerHTML=connectionPanel();
+  if(opened && node.querySelector('details'))node.querySelector('details').open=true;
+ }
+}
+function errorAdvice(status, isJson){
+ if(status===403)return 'Toegang geweigerd (HTTP 403). Controleer /sp/api.php, de hostingrechten en .htaccess.';
+ if(status===404)return isJson?'De PHP-API herkent deze controle niet. Upload de nieuwste api.php.':'API niet gevonden (HTTP 404). Controleer of api.php in /sp/ staat.';
+ if(status>=500)return `Serverfout (HTTP ${status}). Controleer PHP, config.php en de schrijfrechten van de privé-opslag.`;
+ if(status===401)return 'De server is bereikbaar, maar het gezinswachtwoord of de sessie moet opnieuw worden ingesteld.';
+ if(status===429)return 'Te veel pogingen. Probeer later opnieuw.';
+ if(!isJson)return 'De server geeft HTML of een andere foutpagina in plaats van JSON. Controleer /sp/api.php.';
+ return `Serverfout (HTTP ${status}).`;
+}
 function persist(){try{storage.setItem('bijons-local-v1',JSON.stringify(state));storage.setItem('bijons-outbox-v1',JSON.stringify(outbox));}catch{toast('Lokale opslag is vol; gebruik kleinere foto’s.');}}
 function person(id){return state.people.find(p => p.id === id);}
 function store(id){return state.stores.find(s => s.id === id);}
@@ -107,10 +209,10 @@ function photoFor(x){
 function logoHeader(){return `<header class="masthead"><div class="masthead-row"><div><div class="mast-small">ONS KLEINE HOEKJE</div><div class="brand">schattepatatjes<span>✦</span></div></div><div class="mast-right"><div class="mast-avatars">${state.people.map(p=>`<button class="avatar ${p.id===activeId?'active':''}" aria-label="Verder als ${attr(p.name)}" title="Verder als ${attr(p.name)}" data-action="become" data-id="${attr(p.id)}" style="--tone:${THEMES.find(x=>x.id===p.theme)?.color||'#bbb'}">${cleanImg(p.avatar)?`<img src="${attr(cleanImg(p.avatar))}" alt="">`:esc(first(p.name))}</button>`).join('')}</div><button class="icon-button header-gear" aria-label="Instellingen" data-action="settings">${ico('gear')}</button></div></div></header>`;}
 const nav = [{page:'home',name:'Thuis',icon:'home'},{page:'shopping',name:'Boodschappen',icon:'basket'},{page:'tasks',name:'Taken',icon:'checklist'},{page:'people',name:'Profielen',icon:'people'}];
 function bottomNav(){return `<nav class="bottom-nav" aria-label="Hoofdnavigatie">${nav.map(n=>`<button class="nav-button ${ui.page===n.page?'active':''}" data-action="navigate" data-page="${n.page}" aria-current="${ui.page===n.page?'page':'false'}">${ico(n.icon)}<span>${n.name}</span></button>`).join('')}</nav>`;}
-function syncLabel(){const m=mode==='online'?{text:!navigator.onLine?'Wacht op internet':outbox.length?'Nog te synchroniseren':'Samen bijgewerkt',cls:navigator.onLine?'':'offline'}:mode==='locked'?{text:'Opnieuw aanmelden',cls:'offline'}:mode==='setup'?{text:'Lokaal voorbeeld',cls:'local'}:{text:'Alleen op dit toestel',cls:'local'};return `<span class="sync-status ${m.cls}"><span class="status-dot"></span>${m.text}</span>`;}
+function syncLabel(){const p=serverPresentation();return `<span class="sync-status ${p.style}"><span class="status-dot"></span>${esc(p.label)}</span>`;}
 function render(){
  if(!person(activeId))activeId=state.people[0]?.id || '';
- $('#app').innerHTML=`<div class="app-shell">${logoHeader()}<div class="motto-strip"><span class="motto-text">${esc(state.household)} · ${new Intl.DateTimeFormat('nl-NL',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span><button class="quiet-link" data-action="settings" aria-label="Verbinding instellen">${syncLabel()}</button></div><main class="page" id="main">${ui.page==='home'?homePage():ui.page==='shopping'?shoppingPage():ui.page==='tasks'?tasksPage():peoplePage()}</main>${bottomNav()}</div>`;
+ $('#app').innerHTML=`<div class="app-shell">${logoHeader()}<div class="motto-strip"><span class="motto-text">${esc(state.household)} · ${new Intl.DateTimeFormat('nl-NL',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span><button class="quiet-link" id="connection-trigger" data-action="settings" aria-label="Bekijk serververbinding en synchronisatie">${syncLabel()}</button></div><main class="page" id="main">${ui.page==='home'?homePage():ui.page==='shopping'?shoppingPage():ui.page==='tasks'?tasksPage():peoplePage()}</main>${bottomNav()}</div>`;
 }
 function pageTitle(kicker,title,subtitle='',right=''){return `<div class="page-head"><div><div class="eyebrow">${kicker}</div><h1 class="page-title">${title}</h1>${subtitle?`<p class="page-subtitle">${subtitle}</p>`:''}</div>${right}</div>`;}
 function shortTask(t,showPerson=true){return `<div class="home-item"><span class="mini-dot"></span><span class="home-item-title">${esc(t.name)}</span>${t.due?`<small>${esc(formatDate(t.due))}</small>`:''}${showPerson&&t.assignee?avatar(person(t.assignee),'tiny'):''}</div>`;}
@@ -219,21 +321,62 @@ function operation(type,data){
  return op;
 }
 async function api(action,options={}){
- const params = new URLSearchParams({action,...(options.query||{})});
- const res=await fetch(`api.php?${params}`,{method:options.body?'POST':'GET',headers:options.body?{'Content-Type':'application/json'}:undefined,credentials:'same-origin',body:options.body?JSON.stringify(options.body):undefined,cache:'no-store',signal:AbortSignal.timeout(10000)});
- let body;try{body=await res.json();}catch{throw Error('De server geeft geen geldig antwoord.');}
- if(!res.ok)throw Object.assign(Error(body.message||'Verbinding mislukt.'),{status:res.status,body});
+ const params=new URLSearchParams({action,...(options.query||{})});
+ const started=performance.now();
+ let response;
+ try{
+  response=await fetch(`api.php?${params}`,{
+   method:options.body?'POST':'GET',headers:options.body?{'Content-Type':'application/json'}:undefined,
+   credentials:'same-origin',body:options.body?JSON.stringify(options.body):undefined,
+   cache:'no-store',signal:AbortSignal.timeout(10000)
+  });
+ }catch(cause){
+  const message=cause.name==='TimeoutError'?'De server reageert niet binnen 10 seconden.':'Geen contact met de server. Controleer internet en het API-adres.';
+  const e=Object.assign(Error(message),{status:0});
+  recordConnection(false,{status:0,error:message,latency:performance.now()-started});
+  throw e;
+ }
+ const elapsed=performance.now()-started;
+ const jsonType=(response.headers.get('content-type')||'').includes('application/json');
+ let body=null;
+ if(jsonType){try{body=await response.json();}catch{/* handled below */}}
+ if(!body||typeof body!=='object'){
+  const message=errorAdvice(response.status,false);
+  const e=Object.assign(Error(message),{status:response.status});
+  recordConnection(false,{status:response.status,error:message,latency:elapsed});
+  throw e;
+ }
+ if(!response.ok||body.ok===false){
+  const message=body.message||errorAdvice(response.status,true);
+  const e=Object.assign(Error(message),{status:response.status,body});
+  recordConnection(false,{status:response.status,error:response.status===404&&body.message==='Onbekende actie.'?errorAdvice(404,true):message,latency:elapsed});
+  throw e;
+ }
+ if(action==='health' && body.service!=='schattepatatjes-api'){
+  const message='Onverwachte API. Controleer of Schattepatatjes op de juiste server staat.';
+  recordConnection(false,{status:response.status,error:message,latency:elapsed});
+  throw Object.assign(Error(message),{status:response.status});
+ }
+ recordConnection(true,{status:response.status,result:body,latency:elapsed});
  return body;
 }
 async function loadRemote(){
+ const previousMode=mode;
  try{
   const res=await api('state');
-  if(res.needsSetup){mode='setup';render();return;}
-  if(res.state){mode='online';storage.setItem('bijons-was-online','1');state=normalized(res.state);if(!outbox.length)persist();else outbox.forEach(op=>applyOperation(state,op));persist();render();if(outbox.length)flushQueue();}
+  if(res.needsSetup){mode='setup';render();if(modal?.kind==='settings'&&mode!==previousMode)renderOverlay();return;}
+  if(res.state){
+   mode='online';diagnostics.authenticated=true;diagnostics.configured=true;
+   storage.setItem('bijons-was-online','1');
+   state=normalized(res.state);
+   if(outbox.length)outbox.forEach(op=>applyOperation(state,op));
+   persist();if(!outbox.length)markSynced();render();
+   if(modal?.kind==='settings'&&mode!==previousMode)renderOverlay();
+   if(outbox.length)flushQueue();
+  }
  }catch(e){
-  if(e.status===401){mode='locked';render();return;}
-  if(mode==='online'){render();return;}
-  mode='local';render();
+  if(e.status===401){mode='locked';render();if(modal?.kind==='settings'&&mode!==previousMode)renderOverlay();return;}
+  if(mode!=='online'){mode='local';render();}
  }
 }
 async function flushQueue(){
@@ -243,19 +386,53 @@ async function flushQueue(){
   while(outbox.length){
    const op=outbox[0];
    const res=await api('mutate',{body:op});
-   outbox.shift();
-   state=normalized(res.state);
+   outbox.shift();state=normalized(res.state);
    outbox.forEach(p=>applyOperation(state,p));
-   persist();render();
+   persist();markSynced();render();
   }
- }catch(e){if(e.status===401){mode='locked';toast('Meld je opnieuw aan om te synchroniseren.');}else toast('Even geen verbinding. Je wijzigingen blijven bewaard.');}
- finally{flushBusy=false;render();}
+ }catch(e){
+  if(e.status===401){mode='locked';toast('Meld je opnieuw aan om te synchroniseren.');}
+  else toast(`Wijzigingen blijven op dit toestel staan. ${e.message}`);
+ }finally{flushBusy=false;render();updateConnectionDisplay();}
 }
-async function refreshRemote(){
- if(mode!=='online'||flushBusy||outbox.length||!navigator.onLine)return;
- if(Date.now()-lastPollAt<5500)return;
+async function refreshRemote(force=false){
+ if(mode!=='online'||flushBusy||outbox.length)return;
+ if(!force && Date.now()-lastPollAt<5500)return;
  lastPollAt=Date.now();
- try{const res=await api('state',{query:{since:String(state.revision||0)}});if(res.state){state=normalized(res.state);persist();render();}}catch(e){if(e.status===401){mode='locked';render();}}
+ try{
+  const res=await api('state',{query:{since:String(state.revision||0)}});
+  if(res.state){state=normalized(res.state);persist();render();}
+  markSynced();
+ }catch(e){if(e.status===401){mode='locked';render();if(modal?.kind==='settings')renderOverlay();}}
+}
+async function probeServer(){
+ if(probeBusy)return;
+ probeBusy=true;
+ try{
+  const res=await api('health');
+  const prior=mode;
+  if(!res.configured){mode='setup';}
+  else if(!res.authenticated){mode='locked';}
+  else if(mode!=='online'){await loadRemote();}
+  if(mode!==prior){render();if(modal?.kind==='settings')renderOverlay();}
+ }catch(e){/* api() already supplied the concrete failure to the interface. */}
+ finally{probeBusy=false;updateConnectionDisplay();}
+}
+async function syncNow(){
+ await probeServer();
+ if(mode==='online'){
+  if(outbox.length)await flushQueue();
+  else await refreshRemote(true);
+ }
+ updateConnectionDisplay();
+}
+function copiedDiagnostics(){
+ const rows=[`Schattepatatjes ${window.SchattepatatjesUpdater?.appVersion?.()||'web'}`,`API: ${apiAddress}`,
+  `Status: ${serverPresentation().label}`,`HTTP: ${diagnostics.httpStatus??'Geen'}`,
+  `Laatste controle: ${readableTime(diagnostics.checkedAt)}`,`Laatste synchronisatie: ${readableTime(diagnostics.lastSync)}`,
+  `Wachtende wijzigingen: ${outbox.length}`,`API-versie: ${diagnostics.version||'Onbekend'}`,
+  `Probleem: ${diagnostics.error||'Geen'}`];
+ return rows.join('\n');
 }
 function toast(text){const el=$('#toast');el.textContent=text;el.classList.add('show');clearTimeout(toastHandle);toastHandle=setTimeout(()=>el.classList.remove('show'),2700);}
 function openModal(kind,data={}){modal={kind,...data};currentFileData='';renderOverlay();}
@@ -300,9 +477,10 @@ function renderOverlay(){
   content=`<form id="note-form"><p class="form-description">Een lief bericht, een grapje of gewoon iets dat je kwijt wilt.</p><div class="field"><label>Jouw krabbeltje</label><textarea name="message" maxlength="500" required placeholder="Schrijf iets gezelligs…"></textarea></div><div class="form-actions"><button type="submit" class="gloss-btn">${ico('message','sm')} Plaats krabbeltje</button></div></form>`;
  }else if(modal.kind==='settings'){
   title='Ons hoekje instellen';
-  content=`<h3 class="form-heading">Het gezin</h3><form id="house-form"><div class="field"><label>Naam van jullie plekje</label><input name="household" maxlength="55" required value="${attr(state.household)}"></div><button type="submit" class="gloss-btn secondary small">${ico('check','sm')} Naam bewaren</button></form>
+  content=`<h3 class="form-heading">Verbinding en synchronisatie</h3><div id="connection-details">${connectionPanel()}</div>
+  <h3 class="form-heading" style="margin-top:24px">Het gezin</h3><form id="house-form"><div class="field"><label>Naam van jullie plekje</label><input name="household" maxlength="55" required value="${attr(state.household)}"></div><button type="submit" class="gloss-btn secondary small">${ico('check','sm')} Naam bewaren</button></form>
   <h3 class="form-heading" style="margin-top:24px">Gezinsleden</h3><div class="inline-actions" style="margin-bottom:11px">${state.people.map(p=>`<span style="display:flex;gap:5px;align-items:center;font-size:12px;color:#88725c">${avatar(p,'tiny')}${esc(p.name)}</span>`).join('')}</div><form id="person-add-form" class="add-inline">${ico('plus')}<input name="name" maxlength="35" placeholder="Nieuw gezinslid" aria-label="Nieuw gezinslid" required><button type="submit">Toevoegen</button></form>
-  <h3 class="form-heading" style="margin-top:24px">Samen synchroniseren</h3><div class="setup-card"><div class="status-row">${ico(mode==='online'?'cloud':'lock','sm')} ${mode==='online'?'Verbonden met de gezinsserver':mode==='locked'?'Gezinsserver gevonden — aanmelden':mode==='setup'?'Server is klaar voor de eerste installatie':'Lokaal op dit toestel'}</div>
+  <h3 class="form-heading" style="margin-top:24px">Gezinsserver instellen</h3><div class="setup-card"><div class="status-row">${ico(mode==='online'?'cloud':'lock','sm')} ${mode==='online'?'Verbonden met de gezinsserver':mode==='locked'?'Gezinsserver gevonden — aanmelden':mode==='setup'?'Server is klaar voor de eerste installatie':'Lokaal op dit toestel'}</div>
   <p>${mode==='online'?'Alle gezinsleden gebruiken dezelfde boodschappen, taken en profielen. Bij tijdelijk geen bereik worden wijzigingen later verstuurd.':mode==='locked'?'Log opnieuw in met jullie gezamenlijke gezinswachtwoord.':mode==='setup'?'Deze website heeft een PHP-backend. Maak één keer een gezinsruimte aan om jullie telefoons te koppelen. De voorbeeldgegevens worden daarbij vervangen.':'Je kunt de app nu al proberen. Als je hem op je PHP-hosting plaatst, kun je één gedeelde gezinsruimte instellen.'}</p>
   ${mode==='setup'?`<form id="setup-form"><div class="field"><label>Naam van jullie plekje</label><input name="household" value="Ons gezin" maxlength="55" required></div><div class="field-row"><div class="field"><label>Jouw naam</label><input name="owner" maxlength="35" required placeholder="Jij"></div><div class="field"><label>Naam van je partner</label><input name="partner" maxlength="35" required placeholder="Partner"></div></div><div class="field"><label>Installatiesleutel (staat in config.php)</label><input type="text" name="setupKey" required autocomplete="off" placeholder="Eenmalige installatiesleutel"></div><div class="field"><label>Gezamenlijk wachtwoord (minimaal 10 tekens)</label><input type="password" name="password" minlength="10" required autocomplete="new-password"></div><button type="submit" class="gloss-btn full">Maak ons gezin aan</button></form>`:mode==='locked'?`<form id="login-form"><div class="field"><label>Gezinswachtwoord</label><input type="password" name="password" required autocomplete="current-password"></div><button class="gloss-btn full" type="submit">Aanmelden</button></form>`:mode==='online'?`<button class="gloss-btn secondary small" data-action="logout">Afmelden van dit toestel</button>`:`<button class="gloss-btn secondary small" data-action="retry-server">${ico('cloud','sm')} Zoek gezinsserver</button>`}</div>
   ${updatePanel()}
@@ -411,10 +589,12 @@ async function handleClick(e){
   $('#preview-image').innerHTML=`<img src="${attr(url)}" alt="Productafbeelding">`;
   toast('Productfoto gekozen.');return;
  }
- if(a==='retry-server'){closeModal();await loadRemote();toast(mode==='online'?'Verbonden.':'Nog geen gezinsserver gevonden.');return;}
+ if(a==='retry-server'||a==='test-server'){await probeServer();return;}
+ if(a==='sync-now'){await syncNow();return;}
+ if(a==='copy-diagnostics'){try{await navigator.clipboard.writeText(copiedDiagnostics());toast('Diagnose gekopieerd, zonder geheime gegevens.');}catch{toast('Kopiëren niet beschikbaar op dit apparaat.');}return;}
  if(a==='logout'){
   try{await api('logout',{body:{}});}catch{}
-  mode='locked';closeModal();render();toast('Afgemeld van dit toestel.');return;
+  mode='locked';diagnostics.authenticated=false;diagnostics.phase='auth';closeModal();render();toast('Afgemeld van dit toestel.');return;
  }
 }
 async function handleSubmit(e){
@@ -468,7 +648,7 @@ async function handleSubmit(e){
   const btn=form.querySelector('button[type="submit"]');btn.disabled=true;
   try{
    const result=await api('setup',{body:{household:String(data.household||'').trim(),owner:String(data.owner||'').trim(),partner:String(data.partner||'').trim(),password:String(data.password||''),setupKey:String(data.setupKey||'')}});
-   if(result.state){state=normalized(result.state);mode='online';storage.setItem('bijons-was-online','1');outbox=[];activeId=state.people[0]?.id;storage.setItem('bijons-active-person',activeId);persist();ui.page='home';closeModal();render();toast('Jullie eigen plekje is aangemaakt.');}
+   if(result.state){state=normalized(result.state);mode='online';storage.setItem('bijons-was-online','1');outbox=[];activeId=state.people[0]?.id;storage.setItem('bijons-active-person',activeId);persist();markSynced();ui.page='home';closeModal();render();toast('Jullie eigen plekje is aangemaakt.');}
   }catch(err){toast(err.message);}finally{btn.disabled=false;}return;
  }
  if(form.id==='login-form'){
@@ -495,9 +675,10 @@ document.addEventListener('change',async e=>{
  }catch(err){toast(err.message);}
 });
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal)closeModal();});
-window.addEventListener('online',()=>{if(mode==='online')flushQueue();refreshRemote();});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){flushQueue();refreshRemote();}});
-window.setInterval(refreshRemote,12000);
+window.addEventListener('online',()=>{if(mode==='online'){flushQueue();refreshRemote(true);}else probeServer();});
+window.addEventListener('offline',()=>updateConnectionDisplay());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(mode==='online'){flushQueue();refreshRemote(true);}else probeServer();}});
+window.setInterval(()=>{if(document.hidden)return;if(mode==='online'){if(outbox.length)flushQueue();else refreshRemote();}else if(Date.now()-diagnostics.checkedAt>45000)probeServer();},12000);
 if(!window.SCHATTEPATATJES_NATIVE && 'serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
 render();
 loadRemote();

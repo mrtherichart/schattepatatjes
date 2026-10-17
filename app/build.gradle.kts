@@ -9,8 +9,8 @@ android {
         applicationId = "nl.mrtherich.schattepatatjes"
         minSdk = 24
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.5.1"
+        versionCode = 7
+        versionName = "0.6.0"
     }
 
     signingConfigs {
@@ -53,10 +53,6 @@ val bundleWeb by tasks.registering(Copy::class) {
         exclude("config.php", "api.php", "data/**", "*.jks", "*secret*")
     }
     into(layout.buildDirectory.dir("generated/familyWeb"))
-    filesMatching("index.html") {
-        filter { line: String ->
-            line.replace("<script type=\"module\"", "<script>window.SCHATTEPATATJES_NATIVE=true;</script><script type=\"module\"")
-        }
-    }
+
 }
 tasks.named("preBuild") { dependsOn(bundleWeb) }

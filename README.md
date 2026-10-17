@@ -39,3 +39,11 @@ De updater gebruikt alleen GitHub Releases, controleert SHA-256, de pakket-ID en
 ## Testen
 
 `node --check app.js`, `node tests/check-project.cjs`, `php -l api.php`. De Actions-testbouw compileert de Kotlin-app en controleert dat Android-assets daadwerkelijk in de APK zitten. Op een echte telefoon blijven installatie, foto-kiezer, Android-permissie en servergedrag nog te verifiëren.
+
+## Serververbinding zichtbaar (versie 0.6.0)
+
+De statusstrook onder de appnaam meldt of gezinsgegevens werkelijk gesynchroniseerd zijn, of er aanmelding nodig is, of een serverfout is opgetreden en hoeveel wijzigingen nog wachten. **Instellingen → Verbinding en synchronisatie** laat nu de bereikbaarheidscontrole, aanmelding, laatste succesvolle synchronisatie, wachtende wijzigingen en concrete foutmelding zien. Onder *Technische details* staan het exacte API-adres, HTTP-status, reactietijd, PHP-API-versie en opslagstatus. Er is een knop **Verbinding testen**, een knop **Nu synchroniseren** bij aangemelde gebruikers en een optie om een diagnose zonder wachtwoorden te kopiëren.
+
+De nieuwe PHP-endpoint `api.php?action=health` beantwoordt een eenvoudige controle ook zonder aanmelding. Hij deelt geen privégegevens of sleutels. De WebView gebruikt nog steeds uitsluitend de echte gezinsserver voor synchronisatie; de interface werkt lokaal uit de APK. **Upload zowel het vernieuwde `api.php` als de webbestanden** voor iPhone/PWA; een APK-update alleen werkt met een oudere API niet volledig.
+
+De laatste succesvolle synchronisatietijd wordt lokaal bewaard. Bij een serverstoring blijven lokale wijzigingen in de wachtrij, zodat ze later opnieuw verstuurd kunnen worden.
