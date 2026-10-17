@@ -2,6 +2,14 @@ name: Android test APK
 on:
   push:
     branches: [main]
+    paths:
+      - 'app/**'
+      - 'web/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'tests/**'
+      - '.github/workflows/android.yml'
   workflow_dispatch:
 
 permissions:
@@ -24,15 +32,13 @@ jobs:
           test -d "$ANDROID_HOME"
           test -f "$ANDROID_HOME/platforms/android-36/android.jar" || sdkmanager --install 'platforms;android-36'
           test -d "$ANDROID_HOME/build-tools/36.0.0" || sdkmanager --install 'build-tools;36.0.0'
-      - name: Web app and server smoke tests
+      - name: Frontend + compatibility checks
         run: |
-          node --check app.js
+          node --check web/app.js
           node tests/check-project.cjs
-          node tests/server-diagnostics.test.cjs
-          php -l api.php
       - name: Build Kotlin debug APK
         run: gradle --no-daemon :app:assembleDebug
-      - name: Verify installable APK
+      - name: Verify debug APK and embedded assets
         run: |
           set -euo pipefail
           APK=app/build/outputs/apk/debug/app-debug.apk
@@ -41,6 +47,7 @@ jobs:
           for f in assets/index.html assets/app.js assets/styles.css assets/icon.svg; do
             unzip -l "$APK" | grep -F "$f"
           done
+          ! unzip -l "$APK" | grep -Eq 'assets/(api\.php|config\.php|web-config\.php)'
       - uses: actions/upload-artifact@v4
         with:
           name: schattepatatjes-debug-not-for-updates

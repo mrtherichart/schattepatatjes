@@ -1,7 +1,6 @@
 name: Signed Android release
+# Explicit release only. A web or PHP change never creates an Android Release.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -60,10 +59,11 @@ jobs:
       - name: Verify app
         if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
         run: |
-          node --check app.js
+          node --check web/app.js
           node tests/check-project.cjs
           node tests/server-diagnostics.test.cjs
-          php -l api.php
+          php tests/web-revisions.test.php
+          php -l server/api.php
       - name: Restore the permanent key on the GitHub runner
         if: steps.signing.outputs.ready == 'true' && steps.version.outputs.new == 'true'
         shell: bash

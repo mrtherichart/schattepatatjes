@@ -69,7 +69,10 @@ class MainActivity : Activity() {
                 if (uri.path == "${PREFIX}api.php") return null
                 // Prevent accidentally requesting HTML/JS from the host if an asset is absent.
                 if (!isBundledAsset(uri.path.orEmpty())) return null
-                return loader.shouldInterceptRequest(uri)
+                return loader.shouldInterceptRequest(uri) ?: WebResourceResponse(
+                    "text/plain", "UTF-8", 404, "Not Found", emptyMap(),
+                    java.io.ByteArrayInputStream(ByteArray(0))
+                )
             }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val uri = request.url

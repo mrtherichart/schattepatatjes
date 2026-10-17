@@ -1,5 +1,11 @@
 # Echte serverconfiguratie en gegevens horen nooit in de openbare repository.
 /config.php
+/server/config.php
+/deploy/hosting/web-config.php
+/deploy/hosting/.web-state/
+/deploy/hosting/static/
+**/*.jks
+**/*.p12
 /data/*
 !/data/.htaccess
 *.log

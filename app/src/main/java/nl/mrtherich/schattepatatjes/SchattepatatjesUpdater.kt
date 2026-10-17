@@ -141,7 +141,7 @@ class SchattepatatjesUpdater(
                     error("Het SHA-256-controlegetal klopt niet.")
                 if (apk.exists()) apk.delete()
                 if (!tmp.renameTo(apk)) error("De APK kon niet worden opgeslagen.")
-                if (!isSameAppAndSigner(apk)) error("APK-versie, pakketnaam of Android-ondertekening klopt niet.")
+                verifyUpdateIdentity(apk)?.let { error(it) }
                 ui.post {
                     pendingInstall = apk
                     notify("installing", "Gecontroleerd. Bevestig de update in Android.", update.version, progress = 100)
@@ -170,22 +170,32 @@ class SchattepatatjesUpdater(
         signingCerts(info)?.any { fingerprint(it) == PINNED_CERT } ?: false
     } catch (_: Exception) { false }
 
-    private fun isSameAppAndSigner(apk: File): Boolean {
-      return try {
-        val flag = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES
-            else PackageManager.GET_SIGNATURES
-        val pm = activity.packageManager
-        val archive = pm.getPackageArchiveInfo(apk.absolutePath, flag) ?: return false
-        if (archive.packageName != activity.packageName) return false
-        val newCode = if (Build.VERSION.SDK_INT >= 28) archive.longVersionCode else archive.versionCode.toLong()
-        if (newCode <= versionCode()) return false
-        val installed = pm.getPackageInfo(activity.packageName, flag)
-        val oldCerts = signingCerts(installed) ?: return false
-        val newCerts = signingCerts(archive) ?: return false
-        newCerts.size == 1 && oldCerts.size == 1 &&
-            fingerprint(newCerts[0]) == PINNED_CERT &&
-            oldCerts[0].toByteArray().contentEquals(newCerts[0].toByteArray())
-      } catch (_: Exception) { false }
+    /** Explain the exact release gate instead of masking all failures with one message. */
+    private fun verifyUpdateIdentity(apk: File): String? {
+        return try {
+            val flag = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES
+                else PackageManager.GET_SIGNATURES
+            val pm = activity.packageManager
+            val archive = pm.getPackageArchiveInfo(apk.absolutePath, flag)
+                ?: return "Android kan het gedownloade APK-bestand niet uitlezen."
+            if (archive.packageName != activity.packageName)
+                return "De APK hoort bij een ander Android-pakket (${archive.packageName})."
+            val newCode = if (Build.VERSION.SDK_INT >= 28) archive.longVersionCode else archive.versionCode.toLong()
+            if (newCode <= versionCode())
+                return "De aangeboden APK is niet nieuwer (build $newCode; geïnstalleerd ${versionCode()})."
+            val installed = pm.getPackageInfo(activity.packageName, flag)
+            val oldCerts = signingCerts(installed)
+                ?: return "Android kan de handtekening van de geïnstalleerde app niet uitlezen."
+            val newCerts = signingCerts(archive)
+                ?: return "Android kan de handtekening van de download niet uitlezen."
+            if (newCerts.size != 1 || oldCerts.size != 1)
+                return "De APK heeft geen eenduidige ondertekenaar."
+            if (fingerprint(newCerts[0]) != PINNED_CERT)
+                return "Het certificaat van de APK verschilt van onze vaste releasesleutel."
+            if (!oldCerts[0].toByteArray().contentEquals(newCerts[0].toByteArray()))
+                return "Geïnstalleerde app en download gebruiken verschillende certificaten."
+            null
+        } catch (e: Exception) { "APK-controle mislukte: ${e.message ?: "Android-fout"}" }
     }
 
     fun onResume() {

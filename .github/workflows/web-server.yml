@@ -1,0 +1,31 @@
+name: Web and server checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'server/**'
+      - 'deploy/**'
+      - 'tests/**'
+      - '.github/workflows/web-server.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify web and API
+        run: |
+          node --check web/app.js
+          node tests/check-project.cjs
+          node tests/server-diagnostics.test.cjs
+          php -l server/api.php
+          php -l deploy/lib/WebRevisions.php
+          php -l deploy/hosting/index.php
+          php -l deploy/hosting/web-update.php
+          php -l deploy/hosting/sw.php
+          php tests/web-revisions.test.php

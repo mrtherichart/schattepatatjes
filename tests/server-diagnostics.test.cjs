@@ -8,7 +8,7 @@ const assert=require('node:assert/strict');
 
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'schattepatatjes-test-'));
 const publicRoot=path.join(temp,'public');fs.mkdirSync(publicRoot);
-fs.copyFileSync('api.php',path.join(publicRoot,'api.php'));
+fs.copyFileSync('server/api.php',path.join(publicRoot,'api.php'));
 fs.writeFileSync(path.join(publicRoot,'config.php'),"<?php define('BIJONS_SETUP_KEY','this-is-a-test-only-secret-not-for-production');\n");
 const freePort=()=>new Promise(resolve=>{const server=net.createServer();server.listen(0,'127.0.0.1',()=>{const port=server.address().port;server.close(()=>resolve(port));});});
 function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms));}

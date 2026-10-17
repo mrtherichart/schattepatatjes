@@ -86,7 +86,7 @@ let flushBusy = false;
 let currentFileData = '';
 let toastHandle = null;
 let lastPollAt = 0;
-const apiAddress = new URL('api.php', document.baseURI).href;
+const apiAddress = 'https://mrtherich.nl/sp/api.php';
 const previousSync = getSaved('bijons-last-sync-v1', null);
 const diagnostics = {
   phase: 'checking', checkedAt: 0, lastContact: 0,
@@ -325,7 +325,7 @@ async function api(action,options={}){
  const started=performance.now();
  let response;
  try{
-  response=await fetch(`api.php?${params}`,{
+  response=await fetch(`${apiAddress}?${params}`,{
    method:options.body?'POST':'GET',headers:options.body?{'Content-Type':'application/json'}:undefined,
    credentials:'same-origin',body:options.body?JSON.stringify(options.body):undefined,
    cache:'no-store',signal:AbortSignal.timeout(10000)
@@ -679,7 +679,7 @@ window.addEventListener('online',()=>{if(mode==='online'){flushQueue();refreshRe
 window.addEventListener('offline',()=>updateConnectionDisplay());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(mode==='online'){flushQueue();refreshRemote(true);}else probeServer();}});
 window.setInterval(()=>{if(document.hidden)return;if(mode==='online'){if(outbox.length)flushQueue();else refreshRemote();}else if(Date.now()-diagnostics.checkedAt>45000)probeServer();},12000);
-if(!window.SCHATTEPATATJES_NATIVE && 'serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if(!window.SCHATTEPATATJES_NATIVE && 'serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('/sp/sw.php', {scope:'/sp/'}).catch(()=>{});
 render();
 loadRemote();
 
