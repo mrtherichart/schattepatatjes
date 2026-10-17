@@ -39,7 +39,7 @@ android {
         getByName("debug") { isMinifyEnabled = false }
     }
     // One shared web codebase for web/PWA and embedded Android assets.
-    sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/familyWeb"))
+    sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/familyWeb").get().asFile)
 }
 
 dependencies {
