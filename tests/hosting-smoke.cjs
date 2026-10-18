@@ -16,7 +16,7 @@ copy('server/api.php',`${sp}/api.php`);
 for(const f of fs.readdirSync('server/lib')) copy(`server/lib/${f}`,`${sp}/lib/${f}`);
 fs.writeFileSync(`${sp}/config.php`,`<?php define('BIJONS_SETUP_KEY','test-installation-token-not-production');\n`);
 const webFiles=['index.html','app.js','styles.css','sw.js','manifest.webmanifest','assets/icon.svg','assets/icon-192.png','assets/icon-512.png','assets/apple-touch-icon.png'];
-for (const dir of ['modules','modules/views','styles']) for(const f of fs.readdirSync(`web/${dir}`)) if(f.endsWith('.js') || f.endsWith('.css')) webFiles.push(`${dir}/${f}`);
+for (const dir of ['modules','modules/views','modules/foundation','modules/features','styles']) for(const f of fs.readdirSync(`web/${dir}`)) if(f.endsWith('.js') || f.endsWith('.css')) webFiles.push(`${dir}/${f}`);
 for(const file of webFiles)copy(`web/${file}`,`${sp}/static/revisions/${commit}/${file}`);
 fs.mkdirSync(`${sp}/.web-state`,{recursive:true});
 fs.writeFileSync(`${sp}/.web-state/current.json`,JSON.stringify({current:commit,previous:null}));
@@ -30,7 +30,14 @@ async function main(){
   assert(ready,'PHP preview starts');
   let res=await fetch(`${addr}/sp/`);let body=await res.text();
   assert.equal(res.status,200);assert(body.includes(`<base href="/sp/static/revisions/${commit}/">`));
-  assert(body.includes('Schattepatatjes'));assert(body.includes('app.js?v=8'));
+  assert(body.includes('Schattepatatjes'));assert(body.includes('src="modules/entry.js"'));
+  res=await fetch(`${addr}/sp/static/revisions/${commit}/modules/entry.js`);
+  assert.equal(res.status,200);assert((await res.text()).includes('./foundation/bootstrap.js'));
+  for(const file of webFiles.filter(file=>file.startsWith('modules/') || file.startsWith('styles/'))){
+   res=await fetch(`${addr}/sp/static/revisions/${commit}/${file}`);
+   assert.equal(res.status,200,`${file} is served from the active revision`);
+   assert.equal(await res.text(),fs.readFileSync(`web/${file}`,'utf8'));
+  }
   res=await fetch(`${addr}/sp/static/revisions/${commit}/app.js`);
   assert.equal(res.status,200);body=await res.text();assert(body.includes('https://mrtherich.nl/sp/api.php'));
   res=await fetch(`${addr}/sp/static/revisions/${commit}/modules/model.js`);assert.equal(res.status,200);
